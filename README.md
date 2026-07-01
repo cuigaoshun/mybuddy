@@ -136,3 +136,23 @@
 - `Pydantic`
 
 可以先参考现有示例文件理解飞书接入方式，再按本 README 约束补全正式实现。
+
+## Docker 运行
+
+当前仓库提供了一个仅包含运行环境的 `Dockerfile`，业务代码不打进镜像，而是通过 `docker-compose.yml` 挂载本地代码目录运行。
+
+打镜像命令：
+
+- `docker build -t mybuddy .`
+
+使用 compose 启动命令：
+
+- `docker compose up`
+
+当前 `docker-compose.yml` 会把代码目录挂载为：
+
+- `/home/Project/mybuddy:/workspace`
+
+容器启动后会运行：
+
+- `uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload`
