@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Final
 
 from dynaconf import Dynaconf
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+DEFAULT_CONFIG_PATH: Final[Path] = Path("config2.toml")
 
 
 class FeishuConfig(BaseModel):
@@ -34,6 +37,9 @@ class AppConfig(BaseModel):
     feishu: FeishuConfig
 
 
+config: AppConfig | None = None
+
+
 def load_config(config_path: Path) -> AppConfig:
     """Load config via Dynaconf, allowing env vars to override file values."""
     settings = Dynaconf(
@@ -48,3 +54,15 @@ def load_config(config_path: Path) -> AppConfig:
             log_level=settings.get("feishu.log_level", "INFO"),
         ),
     )
+
+
+def init_config(config_path: Path = DEFAULT_CONFIG_PATH) -> AppConfig:
+    global config
+    config = load_config(config_path)
+    return config
+
+
+def get_config() -> AppConfig:
+    if config is None:
+        return init_config()
+    return config

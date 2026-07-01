@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-import threading
+import asyncio
 import logging
-from pathlib import Path
+import threading
 
 import lark_oapi as lark
+import lark_oapi.ws.client as lark_ws_client
 
-from app.core.config import load_config
+from app.core.config import get_config
 from app.core.log import configure_logging
 from app.gateway.dispatcher import FeishuDispatcher
 from app.router.session_manager import SessionManager
@@ -16,9 +17,13 @@ LOGGER = logging.getLogger(__name__)
 _feishu_thread: threading.Thread | None = None
 
 
-def start_feishu_bot(config_path: Path) -> None:
+def start_feishu_bot() -> None:
     """Load config, wire dependencies, and start the Feishu websocket bot."""
-    config = load_config(config_path)
+    event_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(event_loop)
+    lark_ws_client.loop = event_loop
+
+    config = get_config()
     configure_logging(config.feishu.log_level)
 
     sender = FeishuMessageSender(config.feishu)
@@ -35,7 +40,7 @@ def start_feishu_bot(config_path: Path) -> None:
     client.start()
 
 
-def start_feishu_bot_in_background(config_path: Path) -> None:
+def start_feishu_bot_in_background() -> None:
     """Start the Feishu bot in a background thread once."""
     global _feishu_thread
 
@@ -45,7 +50,6 @@ def start_feishu_bot_in_background(config_path: Path) -> None:
 
     _feishu_thread = threading.Thread(
         target=start_feishu_bot,
-        args=(config_path,),
         name="feishu-bot",
         daemon=True,
     )
