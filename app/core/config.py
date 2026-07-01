@@ -1,0 +1,50 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from dynaconf import Dynaconf
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+class FeishuConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    app_id: str = Field(min_length=1)
+    app_secret: str = Field(min_length=1)
+    log_level: str = "INFO"
+
+    @field_validator("app_id", "app_secret", "log_level", mode="before")
+    @classmethod
+    def strip_string_value(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip()
+        return value
+
+    @field_validator("app_id", "app_secret")
+    @classmethod
+    def validate_required_value(cls, value: str) -> str:
+        if value == "":
+            raise ValueError("不能为空")
+        return value
+
+
+class AppConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    feishu: FeishuConfig
+
+
+def load_config(config_path: Path) -> AppConfig:
+    """Load config via Dynaconf, allowing env vars to override file values."""
+    settings = Dynaconf(
+        settings_files=[str(config_path)],
+        envvar_prefix="MYBUDDY",
+    )
+
+    return AppConfig(
+        feishu=FeishuConfig(
+            app_id=settings.get("feishu.app_id"),
+            app_secret=settings.get("feishu.app_secret"),
+            log_level=settings.get("feishu.log_level", "INFO"),
+        ),
+    )

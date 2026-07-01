@@ -1,0 +1,4 @@
+[feishu]
+app_id = ""
+app_secret = ""
+log_level = "INFO"
