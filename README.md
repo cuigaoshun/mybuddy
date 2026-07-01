@@ -145,6 +145,14 @@
 
 - `docker build -t mybuddy .`
 
+导出镜像命令：
+
+- `docker save -o myimage.tar mybuddy`
+
+导入镜像命令：
+
+- `docker load -i myimage.tar`
+
 使用 compose 启动命令：
 
 - `docker compose up`
