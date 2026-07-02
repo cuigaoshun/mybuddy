@@ -11,6 +11,6 @@ class IncomingChatMessage:
     im_type: str
     text: str
     chat_id: str
-    sender_open_id: str
+    sender_id: str
     message_id: str
     chat_type: str

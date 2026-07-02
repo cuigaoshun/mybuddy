@@ -1,19 +1,19 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 import threading
 
 import lark_oapi as lark
 import lark_oapi.ws.client as lark_ws_client
+from loguru import logger
 
 from app.core.config import get_config
 from app.core.log import configure_logging
+from app.event.bus import EventBus, INCOMING_CHAT_TOPIC
 from app.gateway.dispatcher import FeishuDispatcher
 from app.router.session_manager import SessionManager
 from app.services.im_sender import FeishuMessageSender
 
-LOGGER = logging.getLogger(__name__)
 _feishu_thread: threading.Thread | None = None
 
 
@@ -24,13 +24,15 @@ def start_feishu_bot() -> None:
     lark_ws_client.loop = event_loop
 
     config = get_config()
-    configure_logging(config.feishu.log_level)
+    configure_logging(config.feishu.log_level, config.feishu.log_dir)
 
+    event_bus = EventBus()
     sender = FeishuMessageSender(config.feishu)
     session_manager = SessionManager(sender)
-    dispatcher = FeishuDispatcher(config.feishu, session_manager)
+    event_bus.subscribe_incoming_chat(INCOMING_CHAT_TOPIC, session_manager.handle_message)
+    dispatcher = FeishuDispatcher(config.feishu, event_bus)
 
-    LOGGER.info("飞书 hello bot 启动中")
+    logger.info("飞书 hello bot 启动中")
     client = lark.ws.Client(
         config.feishu.app_id,
         config.feishu.app_secret,
@@ -45,7 +47,7 @@ def start_feishu_bot_in_background() -> None:
     global _feishu_thread
 
     if _feishu_thread is not None and _feishu_thread.is_alive():
-        LOGGER.info("飞书 hello bot 已经启动，跳过重复初始化")
+        logger.info("飞书 hello bot 已经启动，跳过重复初始化")
         return
 
     _feishu_thread = threading.Thread(

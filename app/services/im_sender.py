@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import json
-import logging
 
 import lark_oapi as lark
+from loguru import logger
 from lark_oapi.api.im.v1 import CreateMessageRequest, CreateMessageRequestBody
 
 from app.core.config import FeishuConfig
-
-LOGGER = logging.getLogger(__name__)
 
 
 class SendMessageError(Exception):
@@ -48,15 +46,15 @@ class FeishuMessageSender:
 
         response = self._client.im.v1.message.create(request)
         if response.success():
-            LOGGER.info("飞书消息发送成功，chat_id=%s", chat_id)
+            logger.info("飞书消息发送成功，chat_id={chat_id}", chat_id=chat_id)
             return
 
-        LOGGER.error(
-            "飞书消息发送失败，chat_id=%s code=%s msg=%s log_id=%s",
-            chat_id,
-            response.code,
-            response.msg,
-            response.get_log_id(),
+        logger.error(
+            "飞书消息发送失败，chat_id={chat_id} code={code} msg={msg} log_id={log_id}",
+            chat_id=chat_id,
+            code=response.code,
+            msg=response.msg,
+            log_id=response.get_log_id(),
         )
         raise SendMessageError(chat_id, response.code, response.msg)
 

@@ -6,7 +6,7 @@ from typing import Final
 from dynaconf import Dynaconf
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-DEFAULT_CONFIG_PATH: Final[Path] = Path("config2.toml")
+DEFAULT_CONFIG_PATH: Final[Path] = Path("config.toml")
 
 
 class FeishuConfig(BaseModel):
@@ -15,8 +15,9 @@ class FeishuConfig(BaseModel):
     app_id: str = Field(min_length=1)
     app_secret: str = Field(min_length=1)
     log_level: str = "INFO"
+    log_dir: str = "logs"
 
-    @field_validator("app_id", "app_secret", "log_level", mode="before")
+    @field_validator("app_id", "app_secret", "log_level", "log_dir", mode="before")
     @classmethod
     def strip_string_value(cls, value: object) -> object:
         if isinstance(value, str):
@@ -52,6 +53,7 @@ def load_config(config_path: Path) -> AppConfig:
             app_id=settings.get("feishu.app_id"),
             app_secret=settings.get("feishu.app_secret"),
             log_level=settings.get("feishu.log_level", "INFO"),
+            log_dir=settings.get("feishu.log_dir", "logs"),
         ),
     )
 
