@@ -10,6 +10,7 @@ from loguru import logger
 from app.core.config import get_config
 from app.core.log import configure_logging
 from app.event.bus import EventBus, INCOMING_CHAT_TOPIC
+from app.event.models import IM_TYPE_FEISHU
 from app.gateway.dispatcher import FeishuDispatcher
 from app.router.session_manager import SessionManager
 from app.services.im_sender import FeishuMessageSender
@@ -29,7 +30,7 @@ def start_feishu_bot() -> None:
     event_bus = EventBus()
     sender = FeishuMessageSender(config.feishu)
     session_manager = SessionManager(sender)
-    event_bus.subscribe_incoming_chat(INCOMING_CHAT_TOPIC, session_manager.handle_message)
+    event_bus.subscribe_incoming_chat(INCOMING_CHAT_TOPIC, IM_TYPE_FEISHU, session_manager.handle_message)
     dispatcher = FeishuDispatcher(config.feishu, event_bus)
 
     logger.info("飞书 hello bot 启动中")
