@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import json
 import logging
+from typing import Final
 
 import lark_oapi as lark
 
 from app.core.config import FeishuConfig
-from app.event.models import IncomingChatMessage
+from app.event.models import IM_TYPE_FEISHU, IncomingChatMessage
 from app.router.session_manager import SessionManager
 
 LOGGER = logging.getLogger(__name__)
+TEXT_MESSAGE_TYPE: Final[str] = "text"
 
 
 class FeishuDispatcher:
@@ -40,7 +42,7 @@ class FeishuDispatcher:
 
 def _normalize_message(data: lark.im.v1.P2ImMessageReceiveV1) -> IncomingChatMessage | None:
     message = data.event.message
-    if message.message_type != "text":
+    if message.message_type != TEXT_MESSAGE_TYPE:
         return None
 
     payload = json.loads(message.content)
@@ -56,6 +58,7 @@ def _normalize_message(data: lark.im.v1.P2ImMessageReceiveV1) -> IncomingChatMes
         return None
 
     return IncomingChatMessage(
+        im_type=IM_TYPE_FEISHU,
         text=text_value.strip(),
         chat_id=message.chat_id,
         sender_open_id=sender_open_id,
