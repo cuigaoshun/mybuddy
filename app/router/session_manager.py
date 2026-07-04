@@ -74,16 +74,17 @@ class SessionManager:
             im_type=message.im_type,
             chat_id=message.chat_id,
         )
-        if _is_reply_already_covered(session_info, message):
-            logger.info(
-                "拿到租约后发现已有更新回复，跳过本次回复，message_id={message_id}",
-                message_id=message.message_id,
-            )
-            return
 
         first_reply_time = None
         latest_reply_time = None
         try:
+            if _is_reply_already_covered(session_info, message):
+                logger.info(
+                    "拿到租约后发现已有更新回复，跳过本次回复，message_id={message_id}",
+                    message_id=message.message_id,
+                )
+                return
+
             reply_text = self._chat_agent.generate_reply(message, session_info)
             if reply_text is None:
                 return

@@ -22,9 +22,15 @@ class ConversationMemoryService:
         embedding = self._embedding_provider.embed_text(_extract_text_content(record))
         return self._repository.save(record, embedding)
 
-    def list_recent_messages(self, user_id: str, im_type: str, chat_id: str) -> list[MemoryRecord]:
+    def list_recent_messages(
+        self,
+        user_id: str,
+        im_type: str,
+        chat_id: str,
+        exclude_message_id: str | None = None,
+    ) -> list[MemoryRecord]:
         """读取指定用户在指定平台下最近 10 条对话记忆。"""
-        return self._repository.list_recent_by_user(user_id, im_type, chat_id)
+        return self._repository.list_recent_by_user(user_id, im_type, chat_id, exclude_message_id)
 
 
 def _extract_text_content(record: MemoryRecord) -> str:

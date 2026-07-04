@@ -76,6 +76,7 @@ class GraphChatAgent:
                 user_id=message.sender_id,
                 im_type=message.im_type,
                 chat_id=message.chat_id,
+                exclude_message_id=message.message_id,
             )
         )
         result = self._compiled_graph.invoke(

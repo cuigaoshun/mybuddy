@@ -10,7 +10,13 @@ class ConversationMemoryRepository(Protocol):
     def save(self, record: MemoryRecord, vector: list[float]) -> bool:
         ...
 
-    def list_recent_by_user(self, user_id: str, im_type: str, chat_id: str) -> list[MemoryRecord]:
+    def list_recent_by_user(
+        self,
+        user_id: str,
+        im_type: str,
+        chat_id: str,
+        exclude_message_id: str | None = None,
+    ) -> list[MemoryRecord]:
         ...
 
 

@@ -70,7 +70,13 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
             return False
         return result.scalar_one_or_none() is not None
 
-    def list_recent_by_user(self, user_id: str, im_type: str, chat_id: str) -> list[MemoryRecord]:
+    def list_recent_by_user(
+        self,
+        user_id: str,
+        im_type: str,
+        chat_id: str,
+        exclude_message_id: str | None = None,
+    ) -> list[MemoryRecord]:
         """按用户、平台与会话查询最近 10 条会话记忆。"""
         statement = (
             select(
@@ -92,6 +98,8 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
             .order_by(desc(self._table.c.message_time), desc(self._table.c.id))
             .limit(RECENT_MESSAGE_LIMIT)
         )
+        if exclude_message_id is not None:
+            statement = statement.where(self._table.c.message_id != exclude_message_id)
 
         with self._engine.begin() as connection:
             rows = connection.execute(statement).mappings().all()
