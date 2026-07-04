@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from dependency_injector import containers, providers
 
-from app.bootstrap.feishu import LarkService
+from app.bootstrap.feishu import create_feishu_client
+from app.bootstrap.listener import Listener
 from app.bootstrap.postgres import get_engine
 from app.event.bus import EventBus
 from app.gateway.dispatch import FeishuDispatcher
@@ -15,6 +16,8 @@ from app.services.im_sender import FeishuMessageSender
 
 class AppContainer(containers.DeclarativeContainer):
     """应用级依赖注入容器。"""
+
+    __self__ = providers.Self()
 
     # 飞书平台配置对象。
     feishu_config = providers.Dependency()
@@ -53,3 +56,9 @@ class AppContainer(containers.DeclarativeContainer):
 
     # 飞书消息分发器，每次取用时创建一个新实例。
     feishu_dispatcher = providers.Factory(FeishuDispatcher, event_bus=event_bus)
+
+    # 飞书 websocket client，应用生命周期内复用。
+    feishu_client = providers.Singleton(create_feishu_client, container=__self__)
+
+    # 监听器管理器，应用生命周期内复用。
+    listener = providers.Singleton(Listener, container=__self__)

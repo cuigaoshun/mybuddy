@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Protocol
 
+import lark_oapi as lark
+
 from app.core.config import FeishuConfig
 from app.event.bus import EventBus
 from app.gateway.dispatch import FeishuDispatcher
@@ -21,4 +23,7 @@ class FeishuBootstrapContainer(Protocol):
         ...
 
     def feishu_dispatcher(self) -> FeishuDispatcher:
+        ...
+
+    def feishu_client(self) -> lark.ws.Client:
         ...

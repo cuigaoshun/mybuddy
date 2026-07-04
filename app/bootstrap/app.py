@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from contextlib import asynccontextmanager
 
 from dependency_injector import providers
@@ -9,7 +8,6 @@ from fastapi import FastAPI
 
 from app.api.routes.health import router as health_router
 from app.bootstrap.container import AppContainer
-from app.bootstrap.feishu import LarkService, create_feishu_client
 from app.core.config import init_config
 from app.event.bus import EventBus
 
@@ -35,14 +33,9 @@ async def lifespan(_: FastAPI):
     # 预加载向量模型。
     container.embedding_provider()
 
-    # 装配并启动飞书监听。
-    _.state.lark_client = create_feishu_client(container)
-    _.state.lark_service = LarkService(_.state.lark_client)
-    _.state.lark_task = asyncio.create_task(_.state.lark_service.start())
-    try:
+    # 装配并启动监听器。
+    async with container.listener().start(_):
         yield
-    finally:
-        await _.state.lark_service.stop()
 
 
 # 创建并返回应用实例。
