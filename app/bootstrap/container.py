@@ -11,7 +11,9 @@ from app.event.bus import EventBus
 from app.gateway.dispatch import FeishuDispatcher
 from app.memory.embeddings import SentenceTransformerEmbeddingProvider
 from app.memory.postgres_repository import PostgresConversationMemoryRepository
+from app.memory.postgres_session_info_repository import PostgresChatSessionInfoRepository
 from app.memory.service import ConversationMemoryService
+from app.memory.session_info_service import ChatSessionInfoService
 from app.router.session_manager import SessionManager
 from app.services.llm import create_chat_model
 from app.services.im_sender import FeishuMessageSender
@@ -43,11 +45,20 @@ class AppContainer(containers.DeclarativeContainer):
     # 对话记忆 PostgreSQL 仓储。
     conversation_memory_repository = providers.Singleton(PostgresConversationMemoryRepository, engine=engine)
 
+    # 会话信息 PostgreSQL 仓储。
+    chat_session_info_repository = providers.Singleton(PostgresChatSessionInfoRepository, engine=engine)
+
     # 对话记忆服务，负责文本提取与向量写入。
     conversation_memory_service = providers.Singleton(
         ConversationMemoryService,
         embedding_provider=embedding_provider,
         repository=conversation_memory_repository,
+    )
+
+    # 会话信息服务，负责维护最新回复时间等会话级信息。
+    chat_session_info_service = providers.Singleton(
+        ChatSessionInfoService,
+        repository=chat_session_info_repository,
     )
 
     # 聊天模型客户端，应用生命周期内复用。
@@ -74,6 +85,7 @@ class AppContainer(containers.DeclarativeContainer):
         SessionManager,
         message_sender=message_sender,
         conversation_memory_service=conversation_memory_service,
+        chat_session_info_service=chat_session_info_service,
         chat_agent=chat_agent,
     )
 

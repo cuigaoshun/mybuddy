@@ -4,10 +4,11 @@ from typing import Literal
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
+from loguru import logger
 from pydantic import BaseModel, ConfigDict
 
 from app.event.models import IncomingChatMessage
-from app.memory.models import ASSISTANT_MESSAGE_TYPE, MemoryRecord, USER_MESSAGE_TYPE
+from app.memory.models import ASSISTANT_MESSAGE_TYPE, ChatSessionInfo, MemoryRecord, USER_MESSAGE_TYPE
 from app.memory.service import ConversationMemoryService
 from app.services.llm import ChatModel
 
@@ -28,6 +29,7 @@ class ReplyState(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     message: IncomingChatMessage
+    session_info: ChatSessionInfo
     recent_records: tuple[MemoryRecord, ...] = ()
     reply_text: str | None = None
 
@@ -39,9 +41,11 @@ def build_graph(chat_model: ChatModel):
     def reply_node(state: ReplyState) -> ReplyState:
         messages = _build_prompt_messages(
             system_prompt=SYSTEM_PROMPT,
+            session_info=state.session_info,
             recent_records=state.recent_records,
             current_message=state.message,
         )
+        logger.info("请求模型提示词: {messages}", messages=_serialize_messages(messages))
         reply = chat_model.invoke(messages)
         return state.model_copy(update={"reply_text": _extract_reply_text(reply)})
 
@@ -66,7 +70,7 @@ class GraphChatAgent:
         self._conversation_memory_service = conversation_memory_service
         self._compiled_graph = compiled_graph
 
-    def generate_reply(self, message: IncomingChatMessage) -> str | None:
+    def generate_reply(self, message: IncomingChatMessage, session_info: ChatSessionInfo) -> str | None:
         recent_records = tuple(
             self._conversation_memory_service.list_recent_messages(
                 user_id=message.sender_id,
@@ -77,6 +81,7 @@ class GraphChatAgent:
         result = self._compiled_graph.invoke(
             ReplyState(
                 message=message,
+                session_info=session_info,
                 recent_records=recent_records,
             )
         )
@@ -85,6 +90,7 @@ class GraphChatAgent:
 
 def _build_prompt_messages(
     system_prompt: str,
+    session_info: ChatSessionInfo,
     recent_records: tuple[MemoryRecord, ...],
     current_message: IncomingChatMessage,
 ) -> list[BaseMessage]:
@@ -92,6 +98,19 @@ def _build_prompt_messages(
     messages.extend(_record_to_message(record) for record in recent_records)
     messages.append(HumanMessage(content=current_message.text))
     return messages
+
+
+def _serialize_messages(messages: list[BaseMessage]) -> list[dict[str, str]]:
+    serialized_messages: list[dict[str, str]] = []
+    for message in messages:
+        content = message.content if isinstance(message.content, str) else str(message.content)
+        serialized_messages.append(
+            {
+                "type": message.__class__.__name__,
+                "content": content,
+            }
+        )
+    return serialized_messages
 
 
 def _record_to_message(record: MemoryRecord) -> BaseMessage:

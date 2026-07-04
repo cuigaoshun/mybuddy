@@ -46,3 +46,27 @@ ON public.chat_memory (im_type, message_id, "type");
 CREATE INDEX IF NOT EXISTS idx_chat_memory_content_vector_hnsw
 ON public.chat_memory
 USING hnsw (content_vector vector_cosine_ops);
+
+-- 6. 创建会话信息表，当前用于维护 user_id + im_type + chat_id 维度的最新回复时间。
+CREATE TABLE IF NOT EXISTS public.chat_session_info (
+    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id text NOT NULL,
+    im_type text NOT NULL,
+    chat_id text NOT NULL,
+    first_reply_time timestamptz NULL,
+    latest_reply_time timestamptz NULL,
+    reply_lease_owner text NULL,
+    reply_lease_until timestamptz NULL
+);
+
+COMMENT ON COLUMN public.chat_session_info.id IS '主键，自增标识';
+COMMENT ON COLUMN public.chat_session_info.user_id IS '用户标识，当前一期使用飞书 sender_id';
+COMMENT ON COLUMN public.chat_session_info.im_type IS 'IM 平台类型，一期固定为 feishu';
+COMMENT ON COLUMN public.chat_session_info.chat_id IS '会话标识';
+COMMENT ON COLUMN public.chat_session_info.first_reply_time IS '该会话第一次被成功回复覆盖的用户消息时间';
+COMMENT ON COLUMN public.chat_session_info.latest_reply_time IS '该会话最近一次被成功回复覆盖的用户消息时间';
+COMMENT ON COLUMN public.chat_session_info.reply_lease_owner IS '当前回复租约持有者';
+COMMENT ON COLUMN public.chat_session_info.reply_lease_until IS '当前回复租约过期时间';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uidx_chat_session_info_user_id_im_type_chat_id
+ON public.chat_session_info (user_id, im_type, chat_id);

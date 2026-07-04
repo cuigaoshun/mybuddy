@@ -92,6 +92,7 @@
 当前对话记忆最小实现使用：
 
 - 表：`chat_memory`
+- 会话信息表：`chat_session_info`
 - 主键：`GENERATED ALWAYS AS IDENTITY`
 - 时间字段：`message_time TIMESTAMPTZ`
 - 内容类型字段：`content_type`
@@ -99,6 +100,8 @@
 - 普通索引：`(user_id, im_type, message_time)`，用于按当前用户在当前平台的最近会话时间线读取消息
 - 去重索引：`(im_type, message_id, type)`
 - 向量索引：`HNSW`
+- 会话信息唯一索引：`(user_id, im_type, chat_id)`
+- 会话信息字段：`first_reply_time`、`latest_reply_time`、`reply_lease_owner`、`reply_lease_until`
 
 初始化 SQL 统一放在：
 
