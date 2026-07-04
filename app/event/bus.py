@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Awaitable, Callable, DefaultDict, Final, TypeAlias
+from typing import Callable, DefaultDict, Final, TypeAlias
 
 from app.event.models import IncomingChatMessage
 
-MessageHandler: TypeAlias = Callable[[IncomingChatMessage], Awaitable[None]]
+MessageHandler: TypeAlias = Callable[[IncomingChatMessage], None]
 INCOMING_CHAT_TOPIC: Final[str] = "incoming_chat"
 
 
@@ -31,4 +32,4 @@ class EventBus:
         for subscription in self._incoming_chat_handlers[topic]:
             if subscription.im_type != message.im_type:
                 continue
-            await subscription.handler(message)
+            await asyncio.to_thread(subscription.handler, message)

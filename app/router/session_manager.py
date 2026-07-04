@@ -39,7 +39,7 @@ class SessionManager:
         self._chat_session_info_service = chat_session_info_service
         self._chat_agent = chat_agent
 
-    async def handle_message(self, message: IncomingChatMessage) -> None:
+    def handle_message(self, message: IncomingChatMessage) -> None:
         """处理一条归一化后的消息，并落用户/助手两类记忆。"""
         is_first_user_message = self._conversation_memory_service.store(
             MemoryRecord(
@@ -64,7 +64,7 @@ class SessionManager:
         )
         if lease_owner is None:
             logger.info(
-                "会话已有回复租约，跳过本次回复，message_id={message_id}",
+                "等待回复租约超时，跳过本次回复，message_id={message_id}",
                 message_id=message.message_id,
             )
             return
