@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from json import JSONDecodeError
 from datetime import datetime, timezone
@@ -38,7 +39,11 @@ class FeishuDispatcher:
             "收到飞书消息，text={text}",
             text=normalized_message.text,
         )
-        self._event_bus.publish_incoming_chat(INCOMING_CHAT_TOPIC, normalized_message)
+        event_loop = asyncio.get_event_loop()
+        task = event_loop.create_task(
+            self._event_bus.publish_incoming_chat(INCOMING_CHAT_TOPIC, normalized_message)
+        )
+        task.add_done_callback(_log_task_exception)
 
 
 def _normalize_message(data: lark.im.v1.P2ImMessageReceiveV1) -> IncomingChatMessage | None:
@@ -93,3 +98,10 @@ def _parse_feishu_message_time(raw_value: object) -> datetime | None:
             return None
 
     return None
+
+
+def _log_task_exception(task: asyncio.Task[None]) -> None:
+    try:
+        task.result()
+    except Exception:
+        logger.exception("异步消息分发失败")

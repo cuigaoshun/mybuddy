@@ -36,7 +36,7 @@ class SessionManager:
         self._conversation_memory_service = conversation_memory_service
         self._chat_agent = chat_agent
 
-    def handle_message(self, message: IncomingChatMessage) -> None:
+    async def handle_message(self, message: IncomingChatMessage) -> None:
         """处理一条归一化后的消息，并落用户/助手两类记忆。"""
         is_first_user_message = self._conversation_memory_service.store(
             MemoryRecord(

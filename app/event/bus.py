@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Callable, DefaultDict, Final, TypeAlias
+from typing import Awaitable, Callable, DefaultDict, Final, TypeAlias
 
 from app.event.models import IncomingChatMessage
 
-MessageHandler: TypeAlias = Callable[[IncomingChatMessage], None]
+MessageHandler: TypeAlias = Callable[[IncomingChatMessage], Awaitable[None]]
 INCOMING_CHAT_TOPIC: Final[str] = "incoming_chat"
 
 
@@ -27,8 +27,8 @@ class EventBus:
 
         self._incoming_chat_handlers[topic].append(subscription)
 
-    def publish_incoming_chat(self, topic: str, message: IncomingChatMessage) -> None:
+    async def publish_incoming_chat(self, topic: str, message: IncomingChatMessage) -> None:
         for subscription in self._incoming_chat_handlers[topic]:
             if subscription.im_type != message.im_type:
                 continue
-            subscription.handler(message)
+            await subscription.handler(message)
