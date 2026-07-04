@@ -1,16 +1,17 @@
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 
+from dependency_injector import providers
 from dotenv import load_dotenv
 from fastapi import FastAPI
 
 from app.api.routes.health import router as health_router
-from app.bootstrap.feishu import start_feishu_bot_in_background
-from app.bootstrap.postgres import get_engine
+from app.bootstrap.container import AppContainer
+from app.bootstrap.feishu import LarkService, create_feishu_client
 from app.core.config import init_config
 from app.event.bus import EventBus
-from app.memory.embeddings import SentenceTransformerEmbeddingProvider
 
 
 @asynccontextmanager
@@ -23,15 +24,25 @@ async def lifespan(_: FastAPI):
     # 初始化项目配置。
     config = init_config()
 
+    container = AppContainer()
+    container.feishu_config.override(providers.Object(config.feishu))
+    container.postgres_config.override(providers.Object(config.postgres))
+    container.event_bus.override(providers.Object(event_bus))
+
     # 初始化数据库 Engine。
-    get_engine(config.postgres)
+    container.engine()
 
     # 预加载向量模型。
-    SentenceTransformerEmbeddingProvider()
+    container.embedding_provider()
 
-    # 启动飞书后台线程。
-    start_feishu_bot_in_background(event_bus)
-    yield
+    # 装配并启动飞书监听。
+    _.state.lark_client = create_feishu_client(container)
+    _.state.lark_service = LarkService(_.state.lark_client)
+    _.state.lark_task = asyncio.create_task(_.state.lark_service.start())
+    try:
+        yield
+    finally:
+        await _.state.lark_service.stop()
 
 
 # 创建并返回应用实例。

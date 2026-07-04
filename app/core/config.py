@@ -75,9 +75,6 @@ class AppConfig(BaseModel):
     postgres: PostgresConfig
 
 
-config: AppConfig | None = None
-
-
 def load_config(config_path: Path) -> AppConfig:
     """Load config via Dynaconf, allowing env vars to override file values."""
     settings = Dynaconf(
@@ -105,12 +102,4 @@ def load_config(config_path: Path) -> AppConfig:
 
 
 def init_config(config_path: Path = DEFAULT_CONFIG_PATH) -> AppConfig:
-    global config
-    config = load_config(config_path)
-    return config
-
-
-def get_config() -> AppConfig:
-    if config is None:
-        return init_config()
-    return config
+    return load_config(config_path)
