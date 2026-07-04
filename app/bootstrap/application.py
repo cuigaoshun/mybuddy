@@ -25,6 +25,7 @@ async def lifespan(_: FastAPI):
     container = AppContainer()
     container.feishu_config.override(providers.Object(config.feishu))
     container.postgres_config.override(providers.Object(config.postgres))
+    container.llm_config.override(providers.Object(config.llm))
     container.event_bus.override(providers.Object(event_bus))
 
     # 初始化数据库 Engine。
@@ -32,6 +33,9 @@ async def lifespan(_: FastAPI):
 
     # 预加载向量模型。
     container.embedding_provider()
+
+    # 预编译 Agent Graph。
+    container.agent_graph()
 
     # 装配并启动监听器。
     async with container.listener().start(_):

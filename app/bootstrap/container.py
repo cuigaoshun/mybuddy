@@ -2,15 +2,18 @@ from __future__ import annotations
 
 from dependency_injector import containers, providers
 
+from app.agent.graph import GraphChatAgent, build_graph
 from app.bootstrap.feishu import create_feishu_client
 from app.bootstrap.listener import Listener
 from app.bootstrap.postgres import get_engine
+from app.core.config import LlmConfig
 from app.event.bus import EventBus
 from app.gateway.dispatch import FeishuDispatcher
 from app.memory.embeddings import SentenceTransformerEmbeddingProvider
 from app.memory.postgres_repository import PostgresConversationMemoryRepository
 from app.memory.service import ConversationMemoryService
 from app.router.session_manager import SessionManager
+from app.services.llm import create_chat_model
 from app.services.im_sender import FeishuMessageSender
 
 
@@ -24,6 +27,9 @@ class AppContainer(containers.DeclarativeContainer):
 
     # PostgreSQL 配置对象。
     postgres_config = providers.Dependency()
+
+    # LLM 配置对象。
+    llm_config = providers.Dependency(instance_of=LlmConfig)
 
     # 全局事件总线对象。
     event_bus = providers.Dependency(instance_of=EventBus)
@@ -44,6 +50,22 @@ class AppContainer(containers.DeclarativeContainer):
         repository=conversation_memory_repository,
     )
 
+    # 聊天模型客户端，应用生命周期内复用。
+    chat_model = providers.Singleton(create_chat_model, config=llm_config)
+
+    # 编译后的 LangGraph，应用生命周期内复用。
+    agent_graph = providers.Singleton(
+        build_graph,
+        chat_model=chat_model,
+    )
+
+    # 聊天 Agent，负责读取最近记忆并调用图。
+    chat_agent = providers.Singleton(
+        GraphChatAgent,
+        conversation_memory_service=conversation_memory_service,
+        compiled_graph=agent_graph,
+    )
+
     # 飞书消息发送器。
     message_sender = providers.Singleton(FeishuMessageSender, feishu_config)
 
@@ -52,6 +74,7 @@ class AppContainer(containers.DeclarativeContainer):
         SessionManager,
         message_sender=message_sender,
         conversation_memory_service=conversation_memory_service,
+        chat_agent=chat_agent,
     )
 
     # 飞书消息分发器，每次取用时创建一个新实例。

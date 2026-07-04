@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from app.agent.graph import build_reply
+from loguru import logger
+
 from app.event.models import IncomingChatMessage
 from app.memory.models import ASSISTANT_MESSAGE_TYPE, TEXT_CONTENT_TYPE, USER_MESSAGE_TYPE, MemoryRecord
 from app.memory.service import ConversationMemoryService
@@ -16,6 +17,11 @@ class MessageSender(Protocol):
         ...
 
 
+class ChatAgent(Protocol):
+    def generate_reply(self, message: IncomingChatMessage) -> str | None:
+        ...
+
+
 class SessionManager:
     """会话编排入口，负责记忆写入、回复生成和消息发送。"""
 
@@ -23,14 +29,16 @@ class SessionManager:
         self,
         message_sender: MessageSender,
         conversation_memory_service: ConversationMemoryService,
+        chat_agent: ChatAgent,
     ) -> None:
         """注入消息发送器与对话记忆服务。"""
         self._message_sender = message_sender
         self._conversation_memory_service = conversation_memory_service
+        self._chat_agent = chat_agent
 
     def handle_message(self, message: IncomingChatMessage) -> None:
         """处理一条归一化后的消息，并落用户/助手两类记忆。"""
-        self._conversation_memory_service.store(
+        is_first_user_message = self._conversation_memory_service.store(
             MemoryRecord(
                 user_id=message.sender_id,
                 chat_id=message.chat_id,
@@ -42,8 +50,11 @@ class SessionManager:
                 content={"text": message.text},
             ),
         )
+        if not is_first_user_message:
+            logger.info("消息已处理，跳过重复请求，message_id={message_id}", message_id=message.message_id)
+            return
 
-        reply_text = build_reply(message)
+        reply_text = self._chat_agent.generate_reply(message)
         if reply_text is None:
             return
 

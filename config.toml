@@ -11,3 +11,9 @@ password = "123456"
 database = "mybuddy"
 schema = "public"
 connect_timeout_seconds = 5
+
+[llm]
+model = "gpt-5.4"
+api_key = ""
+base_url = ""
+temperature = 0.7

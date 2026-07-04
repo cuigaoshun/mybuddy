@@ -17,10 +17,14 @@ class ConversationMemoryService:
         self._embedding_provider = embedding_provider
         self._repository = repository
 
-    def store(self, record: MemoryRecord) -> None:
+    def store(self, record: MemoryRecord) -> bool:
         """把一条记忆记录转换为向量后写入仓储。"""
         embedding = self._embedding_provider.embed_text(_extract_text_content(record))
-        self._repository.save(record, embedding)
+        return self._repository.save(record, embedding)
+
+    def list_recent_messages(self, user_id: str, im_type: str, chat_id: str) -> list[MemoryRecord]:
+        """读取指定用户在指定平台下最近 10 条对话记忆。"""
+        return self._repository.list_recent_by_user(user_id, im_type, chat_id)
 
 
 def _extract_text_content(record: MemoryRecord) -> str:

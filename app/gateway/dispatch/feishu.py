@@ -35,9 +35,7 @@ class FeishuDispatcher:
             return
 
         logger.info(
-            "收到飞书消息，chat_id={chat_id} message_id={message_id} text={text}",
-            chat_id=normalized_message.chat_id,
-            message_id=normalized_message.message_id,
+            "收到飞书消息，text={text}",
             text=normalized_message.text,
         )
         self._event_bus.publish_incoming_chat(INCOMING_CHAT_TOPIC, normalized_message)

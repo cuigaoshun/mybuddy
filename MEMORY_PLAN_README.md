@@ -172,9 +172,9 @@ connect_timeout_seconds = 5
 
 - `ConversationMemoryRepository`
   - `save(record: MemoryRecord, vector: list[float]) -> None`
-  - `search_by_user(user_id: str, query_vector: list[float], limit: int) -> list[...]`
+  - `list_recent_by_user(user_id: str, im_type: str, chat_id: str) -> list[MemoryRecord]`
 
-一期最小闭环只要求先实现 `save(...)`，`search_by_user(...)` 可以在接口层先预留，后面接 RAG 或长期记忆检索时再真正用起来。
+一期最小闭环先实现 `save(...)` 和“按 `user_id + im_type` 读取最近 10 条会话”；更复杂的语义检索等后面接 RAG 时再补。
 
 其 PostgreSQL 实现可以命名为：
 

@@ -96,13 +96,14 @@
 - 时间字段：`message_time TIMESTAMPTZ`
 - 内容类型字段：`content_type`
 - 内容字段：`content JSONB`
-- 普通索引：`(user_id, im_type, message_time)`
+- 普通索引：`(user_id, im_type, message_time)`，用于按当前用户在当前平台的最近会话时间线读取消息
 - 去重索引：`(im_type, message_id, type)`
 - 向量索引：`HNSW`
 
 初始化 SQL 统一放在：
 
 - `scripts/init_chat_memory.sql`
+- 如果库里已有旧的 `userid` 列，再执行 `scripts/migrate_chat_memory_userid_to_user_id.sql`
 
 执行方式：
 

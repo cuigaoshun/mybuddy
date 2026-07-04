@@ -68,11 +68,35 @@ class PostgresConfig(BaseModel):
         }
 
 
+class LlmConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    model: str = Field(min_length=1)
+    api_key: str = Field(min_length=1)
+    base_url: str | None = None
+    temperature: float = Field(default=0.7, ge=0, le=2)
+
+    @field_validator("model", "api_key", "base_url", mode="before")
+    @classmethod
+    def strip_optional_string_value(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip()
+        return value
+
+    @field_validator("model", "api_key")
+    @classmethod
+    def validate_llm_required_value(cls, value: str) -> str:
+        if value == "":
+            raise ValueError("不能为空")
+        return value
+
+
 class AppConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     feishu: FeishuConfig
     postgres: PostgresConfig
+    llm: LlmConfig
 
 
 def init_config(config_path: Path = DEFAULT_CONFIG_PATH) -> AppConfig:
@@ -97,5 +121,11 @@ def init_config(config_path: Path = DEFAULT_CONFIG_PATH) -> AppConfig:
             database=settings.get("postgres.database", "mybuddy"),
             schema=settings.get("postgres.schema", "public"),
             connect_timeout_seconds=settings.get("postgres.connect_timeout_seconds", 5),
+        ),
+        llm=LlmConfig(
+            model=settings.get("llm.model", "gpt-4o-mini"),
+            api_key=settings.get("llm.api_key"),
+            base_url=settings.get("llm.base_url"),
+            temperature=settings.get("llm.temperature", 0.7),
         ),
     )

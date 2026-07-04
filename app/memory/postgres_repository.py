@@ -45,7 +45,7 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
             ),
         )
 
-    def save(self, record: MemoryRecord, vector: list[float]) -> None:
+    def save(self, record: MemoryRecord, vector: list[float]) -> bool:
         """保存一条对话记忆；若命中去重约束则忽略重复写入。"""
         statement = insert(self._table).values(
             user_id=record.user_id,
@@ -61,17 +61,20 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
         statement = statement.on_conflict_do_nothing(
             index_elements=["im_type", "message_id", "type"],
         )
+        statement = statement.returning(self._table.c.id)
 
         try:
             with self._engine.begin() as connection:
-                connection.execute(statement)
+                result = connection.execute(statement)
         except IntegrityError:
-            return
+            return False
+        return result.scalar_one_or_none() is not None
 
-    def list_recent_by_user(self, user_id: str, im_type: str) -> list[MemoryRecord]:
-        """按用户与平台查询最近 10 条会话记忆。"""
+    def list_recent_by_user(self, user_id: str, im_type: str, chat_id: str) -> list[MemoryRecord]:
+        """按用户、平台与会话查询最近 10 条会话记忆。"""
         statement = (
             select(
+                self._table.c.id,
                 self._table.c.user_id,
                 self._table.c.chat_id,
                 self._table.c.message_id,
@@ -81,15 +84,19 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
                 self._table.c.content_type,
                 self._table.c.content,
             )
-            .where(self._table.c.user_id == user_id, self._table.c.im_type == im_type)
-            .order_by(desc(self._table.c.message_time))
+            .where(
+                self._table.c.user_id == user_id,
+                self._table.c.im_type == im_type,
+                self._table.c.chat_id == chat_id,
+            )
+            .order_by(desc(self._table.c.message_time), desc(self._table.c.id))
             .limit(RECENT_MESSAGE_LIMIT)
         )
 
         with self._engine.begin() as connection:
             rows = connection.execute(statement).mappings().all()
 
-        return [
+        records = [
             MemoryRecord(
                 user_id=row["user_id"],
                 chat_id=row["chat_id"],
@@ -102,6 +109,8 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
             )
             for row in rows
         ]
+        records.reverse()
+        return records
 
 
 def _normalize_message_time(message_time: datetime) -> datetime:

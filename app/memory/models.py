@@ -12,7 +12,7 @@ ASSISTANT_MESSAGE_TYPE: Final[int] = 1
 
 @dataclass(frozen=True, slots=True)
 class MemoryRecord:
-    """对话记忆写入模型。"""
+    """对话记忆记录模型。"""
 
     user_id: str  # 用户标识，当前一期使用飞书 sender_id
     chat_id: str  # 会话标识
