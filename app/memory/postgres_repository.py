@@ -4,7 +4,7 @@ from collections.abc import Collection
 from datetime import UTC, datetime
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import BigInteger, Column, DateTime, Identity, Index, MetaData, SmallInteger, Table, Text, desc, select
+from sqlalchemy import BigInteger, Column, DateTime, Identity, Index, MetaData, SmallInteger, Table, Text, desc, func, select
 from sqlalchemy.dialects.postgresql import JSONB, insert
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
@@ -154,6 +154,91 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
         )
         if exclude_message_ids:
             statement = statement.where(self._table.c.message_id.not_in(list(exclude_message_ids)))
+
+        with self._engine.begin() as connection:
+            rows = connection.execute(statement).mappings().all()
+
+        return [
+            MemoryRecord(
+                user_id=row["user_id"],
+                chat_id=row["chat_id"],
+                message_id=row["message_id"],
+                message_type=row["type"],
+                im_type=row["im_type"],
+                message_time=row["message_time"],
+                content_type=row["content_type"],
+                content=row["content"],
+            )
+            for row in rows
+        ]
+
+    def list_message_windows_by_message_ids(
+        self,
+        user_id: str,
+        im_type: str,
+        chat_id: str,
+        message_ids: Collection[str],
+        exclude_message_ids: Collection[str] | None = None,
+    ) -> list[MemoryRecord]:
+        """根据命中 message_id 展开每条消息前后各一条时间线消息。"""
+        normalized_message_ids = list(dict.fromkeys(message_ids))
+        if not normalized_message_ids:
+            return []
+
+        timeline = (
+            select(
+                self._table.c.id,
+                self._table.c.user_id,
+                self._table.c.chat_id,
+                self._table.c.message_id,
+                self._table.c.type,
+                self._table.c.im_type,
+                self._table.c.message_time,
+                self._table.c.content_type,
+                self._table.c.content,
+                func.row_number()
+                .over(order_by=(self._table.c.message_time, self._table.c.id))
+                .label("timeline_row_number"),
+            )
+            .where(
+                self._table.c.user_id == user_id,
+                self._table.c.im_type == im_type,
+                self._table.c.chat_id == chat_id,
+            )
+            .subquery()
+        )
+
+        matched_rows = (
+            select(timeline.c.timeline_row_number)
+            .where(timeline.c.message_id.in_(normalized_message_ids))
+            .subquery()
+        )
+
+        statement = (
+            select(
+                timeline.c.id,
+                timeline.c.user_id,
+                timeline.c.chat_id,
+                timeline.c.message_id,
+                timeline.c.type,
+                timeline.c.im_type,
+                timeline.c.message_time,
+                timeline.c.content_type,
+                timeline.c.content,
+                timeline.c.timeline_row_number,
+            )
+            .join(
+                matched_rows,
+                timeline.c.timeline_row_number.between(
+                    matched_rows.c.timeline_row_number - 1,
+                    matched_rows.c.timeline_row_number + 1,
+                ),
+            )
+            .distinct()
+            .order_by(timeline.c.timeline_row_number)
+        )
+        if exclude_message_ids:
+            statement = statement.where(timeline.c.message_id.not_in(list(exclude_message_ids)))
 
         with self._engine.begin() as connection:
             rows = connection.execute(statement).mappings().all()

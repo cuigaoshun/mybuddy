@@ -30,6 +30,16 @@ class ConversationMemoryRepository(Protocol):
     ) -> list[MemoryRecord]:
         ...
 
+    def list_message_windows_by_message_ids(
+        self,
+        user_id: str,
+        im_type: str,
+        chat_id: str,
+        message_ids: Collection[str],
+        exclude_message_ids: Collection[str] | None = None,
+    ) -> list[MemoryRecord]:
+        ...
+
 
 class ChatSessionInfoRepository(Protocol):
     def get_session_info(self, user_id: str, im_type: str, chat_id: str) -> ChatSessionInfo:

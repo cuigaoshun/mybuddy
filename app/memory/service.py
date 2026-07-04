@@ -43,18 +43,29 @@ class ConversationMemoryService:
         limit: int,
         exclude_message_ids: Collection[str] | None = None,
     ) -> list[MemoryRecord]:
-        """根据查询文本召回指定会话下最相近的历史消息。"""
-        normalized_query = query_text.strip()
-        if not normalized_query:
+        """用当前用户问题召回 top-k 命中，并展开每条命中的前后相邻消息。"""
+        recent_question = query_text.strip()
+        if not recent_question:
             return []
 
-        embedding = self._embedding_provider.embed_text(normalized_query)
-        return self._repository.search_similar_by_user(
+        embedding = self._embedding_provider.embed_text(recent_question)
+        matched_records = self._repository.search_similar_by_user(
             user_id=user_id,
             im_type=im_type,
             chat_id=chat_id,
             query_vector=embedding,
             limit=limit,
+            exclude_message_ids=exclude_message_ids,
+        )
+        if not matched_records:
+            return []
+
+        matched_message_ids = [record.message_id for record in matched_records]
+        return self._repository.list_message_windows_by_message_ids(
+            user_id=user_id,
+            im_type=im_type,
+            chat_id=chat_id,
+            message_ids=matched_message_ids,
             exclude_message_ids=exclude_message_ids,
         )
 

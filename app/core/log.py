@@ -39,6 +39,8 @@ def configure_logging(log_level: str, log_dir: str) -> None:
     )
 
     logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
 def _resolve_logging_level(log_level: str) -> str:

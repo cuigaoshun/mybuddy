@@ -48,7 +48,7 @@ def build_graph(chat_model: ChatModel):
             similar_records=state.similar_records,
             current_message=state.message,
         )
-        logger.info("请求模型提示词: {}", json.dumps(_messages_to_jsonable(messages), ensure_ascii=False))
+        logger.info("请求模型提示词:\n{}", json.dumps(_messages_to_jsonable(messages), ensure_ascii=False, indent=2))
         reply = chat_model.invoke(messages)
         return state.model_copy(update={"reply_text": _extract_reply_text(reply)})
 
@@ -112,6 +112,7 @@ def _build_prompt_messages(
     similar_records: tuple[MemoryRecord, ...],
     current_message: IncomingChatMessage,
 ) -> list[BaseMessage]:
+    """组装发给大模型的完整提示词：系统提示、最近对话、相似命中扩展出的历史片段，以及当前用户问题。"""
     messages: list[BaseMessage] = [SystemMessage(content=system_prompt)]
     messages.extend(_record_to_message(record) for record in recent_records)
     similar_context_message = _build_similar_context_message(similar_records)
@@ -119,6 +120,8 @@ def _build_prompt_messages(
         messages.append(similar_context_message)
     messages.append(HumanMessage(content=current_message.text))
     return messages
+
+
 def _record_to_message(record: MemoryRecord) -> BaseMessage:
     text_value = record.content.get("text")
     content = text_value if isinstance(text_value, str) else ""
