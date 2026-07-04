@@ -75,7 +75,7 @@ class AppConfig(BaseModel):
     postgres: PostgresConfig
 
 
-def load_config(config_path: Path) -> AppConfig:
+def init_config(config_path: Path = DEFAULT_CONFIG_PATH) -> AppConfig:
     """Load config via Dynaconf, allowing env vars to override file values."""
     settings = Dynaconf(
         settings_files=[str(config_path)],
@@ -99,7 +99,3 @@ def load_config(config_path: Path) -> AppConfig:
             connect_timeout_seconds=settings.get("postgres.connect_timeout_seconds", 5),
         ),
     )
-
-
-def init_config(config_path: Path = DEFAULT_CONFIG_PATH) -> AppConfig:
-    return load_config(config_path)
