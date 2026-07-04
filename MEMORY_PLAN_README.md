@@ -45,8 +45,8 @@
 字段建议如下：
 
 - `id`：主键，使用 `GENERATED ALWAYS AS IDENTITY`。
-- `userid`：用户标识，对飞书场景先保存内部统一用户 ID。当前链路里可先承接 `sender_id`。
-- `type`：消息方向，`0` 表示 `userid` 发来的消息，`1` 表示系统发给 `userid` 的消息。
+- `user_id`：用户标识，对飞书场景先保存内部统一用户 ID。当前链路里可先承接 `sender_id`。
+- `type`：消息方向，`0` 表示 `user_id` 发来的消息，`1` 表示系统发给 `user_id` 的消息。
 - `im_type`：IM 平台类型，一期固定可写 `feishu`，但字段保留，避免未来表结构重做。
 - `message_time`：消息时间，数据库字段类型使用 `TIMESTAMP`。用户消息取飞书事件里的发送时间，系统回复取飞书发送成功返回或可拿到的发送时间；飞书原始值如果是毫秒时间，需要在写库前统一转换为时间戳。
 - `content`：原始文本内容。
@@ -65,7 +65,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE chat_memory (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    userid text NOT NULL,
+    user_id text NOT NULL,
     type smallint NOT NULL,
     im_type text NOT NULL,
     message_time timestamp NOT NULL,
@@ -73,7 +73,7 @@ CREATE TABLE chat_memory (
     content_vector vector(384) NOT NULL
 );
 
-CREATE INDEX idx_chat_memory_userid_message_time ON chat_memory (userid, message_time);
+CREATE INDEX idx_chat_memory_user_id_im_type_message_time ON chat_memory (user_id, im_type, message_time);
 CREATE INDEX idx_chat_memory_content_vector_hnsw
 ON chat_memory
 USING hnsw (content_vector vector_cosine_ops);
@@ -96,7 +96,7 @@ USING hnsw (content_vector vector_cosine_ops);
 - Postgres 既能承接结构化字段，也能先承接向量列，避免过早拆分存储系统。
 - 后续如果要切到别的向量库，只需要替换 `memory` 基础设施实现，不需要改 `router` 和 `agent`。
 
-一期数据量不大时，也按你的要求默认建好 `HNSW` 向量索引；普通索引只保留 `userid + message_time` 联合索引。
+一期数据量不大时，也按你的要求默认建好 `HNSW` 向量索引；普通索引只保留 `user_id + im_type + message_time` 联合索引。
 
 ## 配置项建议
 

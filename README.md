@@ -96,7 +96,7 @@
 - 时间字段：`message_time TIMESTAMPTZ`
 - 内容类型字段：`content_type`
 - 内容字段：`content JSONB`
-- 普通索引：`(userid, message_time)`
+- 普通索引：`(user_id, im_type, message_time)`
 - 去重索引：`(im_type, message_id, type)`
 - 向量索引：`HNSW`
 

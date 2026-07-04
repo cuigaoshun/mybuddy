@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import BigInteger, Column, DateTime, Identity, Index, MetaData, SmallInteger, Table, Text
+from sqlalchemy import BigInteger, Column, DateTime, Identity, Index, MetaData, SmallInteger, Table, Text, desc, select
 from sqlalchemy.dialects.postgresql import JSONB, insert
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
@@ -12,6 +12,7 @@ from app.memory.models import MemoryRecord
 from app.memory.repositories import ConversationMemoryRepository
 
 CHAT_MEMORY_SCHEMA = "public"
+RECENT_MESSAGE_LIMIT = 10
 
 
 class PostgresConversationMemoryRepository(ConversationMemoryRepository):
@@ -25,7 +26,7 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
             "chat_memory",
             self._metadata,
             Column("id", BigInteger, Identity(always=True), primary_key=True),
-            Column("userid", Text, nullable=False),
+            Column("user_id", Text, nullable=False),
             Column("chat_id", Text, nullable=False),
             Column("message_id", Text, nullable=False),
             Column("type", SmallInteger, nullable=False),
@@ -34,7 +35,7 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
             Column("content_type", Text, nullable=False),
             Column("content", JSONB, nullable=False),
             Column("content_vector", Vector(384), nullable=False),
-            Index("idx_chat_memory_userid_message_time", "userid", "message_time"),
+            Index("idx_chat_memory_user_id_im_type_message_time", "user_id", "im_type", "message_time"),
             Index("idx_chat_memory_im_type_message_id_type", "im_type", "message_id", "type", unique=True),
             Index(
                 "idx_chat_memory_content_vector_hnsw",
@@ -47,7 +48,7 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
     def save(self, record: MemoryRecord, vector: list[float]) -> None:
         """保存一条对话记忆；若命中去重约束则忽略重复写入。"""
         statement = insert(self._table).values(
-            userid=record.user_id,
+            user_id=record.user_id,
             chat_id=record.chat_id,
             message_id=record.message_id,
             type=record.message_type,
@@ -66,6 +67,41 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
                 connection.execute(statement)
         except IntegrityError:
             return
+
+    def list_recent_by_user(self, user_id: str, im_type: str) -> list[MemoryRecord]:
+        """按用户与平台查询最近 10 条会话记忆。"""
+        statement = (
+            select(
+                self._table.c.user_id,
+                self._table.c.chat_id,
+                self._table.c.message_id,
+                self._table.c.type,
+                self._table.c.im_type,
+                self._table.c.message_time,
+                self._table.c.content_type,
+                self._table.c.content,
+            )
+            .where(self._table.c.user_id == user_id, self._table.c.im_type == im_type)
+            .order_by(desc(self._table.c.message_time))
+            .limit(RECENT_MESSAGE_LIMIT)
+        )
+
+        with self._engine.begin() as connection:
+            rows = connection.execute(statement).mappings().all()
+
+        return [
+            MemoryRecord(
+                user_id=row["user_id"],
+                chat_id=row["chat_id"],
+                message_id=row["message_id"],
+                message_type=row["type"],
+                im_type=row["im_type"],
+                message_time=row["message_time"],
+                content_type=row["content_type"],
+                content=row["content"],
+            )
+            for row in rows
+        ]
 
 
 def _normalize_message_time(message_time: datetime) -> datetime:

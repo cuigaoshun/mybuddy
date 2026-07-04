@@ -11,7 +11,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- - content 使用 JSONB，当前内容结构为 {"text": "..."}。
 CREATE TABLE IF NOT EXISTS public.chat_memory (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    userid text NOT NULL,
+    user_id text NOT NULL,
     chat_id text NOT NULL,
     message_id text NOT NULL,
     "type" smallint NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS public.chat_memory (
 
 -- 字段注释。
 COMMENT ON COLUMN public.chat_memory.id IS '主键，自增标识';
-COMMENT ON COLUMN public.chat_memory.userid IS '用户标识，当前一期使用飞书 sender_id';
+COMMENT ON COLUMN public.chat_memory.user_id IS '用户标识，当前一期使用飞书 sender_id';
 COMMENT ON COLUMN public.chat_memory.chat_id IS '会话标识';
 COMMENT ON COLUMN public.chat_memory.message_id IS '消息标识，用于去重';
 COMMENT ON COLUMN public.chat_memory."type" IS '消息方向，0 表示用户消息，1 表示助手消息';
@@ -34,9 +34,9 @@ COMMENT ON COLUMN public.chat_memory.content_type IS '内容类型，一期固�
 COMMENT ON COLUMN public.chat_memory.content IS '消息内容，JSONB 结构，当前为 {"text": "..."}';
 COMMENT ON COLUMN public.chat_memory.content_vector IS '内容向量，维度固定为 384';
 
--- 3. 用户时间联合索引，用于按用户时间线读取消息。
-CREATE INDEX IF NOT EXISTS idx_chat_memory_userid_message_time
-ON public.chat_memory (userid, message_time);
+-- 3. 用户平台时间联合索引，用于按用户最近时间线读取消息。
+CREATE INDEX IF NOT EXISTS idx_chat_memory_user_id_im_type_message_time
+ON public.chat_memory (user_id, im_type, message_time);
 
 -- 4. 去重索引，避免同一平台同一消息方向重复落库。
 CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_memory_im_type_message_id_type
