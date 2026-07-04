@@ -5,10 +5,9 @@ from datetime import UTC, datetime
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import BigInteger, Column, DateTime, Identity, Index, MetaData, SmallInteger, Table, Text
 from sqlalchemy.dialects.postgresql import JSONB, insert
+from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 
-from app.bootstrap.postgres import get_engine
-from app.core.config import PostgresConfig
 from app.memory.models import MemoryRecord
 from app.memory.repositories import ConversationMemoryRepository
 
@@ -18,10 +17,9 @@ CHAT_MEMORY_SCHEMA = "public"
 class PostgresConversationMemoryRepository(ConversationMemoryRepository):
     """基于 SQLAlchemy 的 chat_memory PostgreSQL 仓储实现。"""
 
-    def __init__(self, config: PostgresConfig) -> None:
+    def __init__(self, engine: Engine) -> None:
         """初始化 chat_memory 表映射与数据库连接。"""
-        self._config = config
-        self._engine = get_engine(config)
+        self._engine = engine
         self._metadata = MetaData(schema=CHAT_MEMORY_SCHEMA)
         self._table = Table(
             "chat_memory",
