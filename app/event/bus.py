@@ -21,9 +21,11 @@ class EventBus:
         self._incoming_chat_handlers: DefaultDict[str, list[IncomingChatSubscription]] = defaultdict(list)
 
     def subscribe_incoming_chat(self, topic: str, im_type: str, handler: MessageHandler) -> None:
-        self._incoming_chat_handlers[topic].append(
-            IncomingChatSubscription(im_type=im_type, handler=handler),
-        )
+        subscription = IncomingChatSubscription(im_type=im_type, handler=handler)
+        if subscription in self._incoming_chat_handlers[topic]:
+            return
+
+        self._incoming_chat_handlers[topic].append(subscription)
 
     def publish_incoming_chat(self, topic: str, message: IncomingChatMessage) -> None:
         for subscription in self._incoming_chat_handlers[topic]:
