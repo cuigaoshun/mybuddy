@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Collection
 from datetime import UTC, datetime
 
 from pgvector.sqlalchemy import Vector
@@ -119,6 +120,57 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
         ]
         records.reverse()
         return records
+
+    def search_similar_by_user(
+        self,
+        user_id: str,
+        im_type: str,
+        chat_id: str,
+        query_vector: list[float],
+        limit: int,
+        exclude_message_ids: Collection[str] | None = None,
+    ) -> list[MemoryRecord]:
+        """按向量相似度召回指定会话下最接近的历史消息。"""
+        distance = self._table.c.content_vector.cosine_distance(query_vector)
+        statement = (
+            select(
+                self._table.c.id,
+                self._table.c.user_id,
+                self._table.c.chat_id,
+                self._table.c.message_id,
+                self._table.c.type,
+                self._table.c.im_type,
+                self._table.c.message_time,
+                self._table.c.content_type,
+                self._table.c.content,
+            )
+            .where(
+                self._table.c.user_id == user_id,
+                self._table.c.im_type == im_type,
+                self._table.c.chat_id == chat_id,
+            )
+            .order_by(distance, desc(self._table.c.id))
+            .limit(limit)
+        )
+        if exclude_message_ids:
+            statement = statement.where(self._table.c.message_id.not_in(list(exclude_message_ids)))
+
+        with self._engine.begin() as connection:
+            rows = connection.execute(statement).mappings().all()
+
+        return [
+            MemoryRecord(
+                user_id=row["user_id"],
+                chat_id=row["chat_id"],
+                message_id=row["message_id"],
+                message_type=row["type"],
+                im_type=row["im_type"],
+                message_time=row["message_time"],
+                content_type=row["content_type"],
+                content=row["content"],
+            )
+            for row in rows
+        ]
 
 
 def _normalize_message_time(message_time: datetime) -> datetime:

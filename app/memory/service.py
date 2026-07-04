@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Collection
+
 from app.memory.embeddings import EmbeddingProvider
 from app.memory.models import MemoryRecord
 from app.memory.repositories import ConversationMemoryRepository
@@ -31,6 +33,30 @@ class ConversationMemoryService:
     ) -> list[MemoryRecord]:
         """读取指定用户在指定平台下最近 10 条对话记忆。"""
         return self._repository.list_recent_by_user(user_id, im_type, chat_id, exclude_message_id)
+
+    def search_similar_messages(
+        self,
+        user_id: str,
+        im_type: str,
+        chat_id: str,
+        query_text: str,
+        limit: int,
+        exclude_message_ids: Collection[str] | None = None,
+    ) -> list[MemoryRecord]:
+        """根据查询文本召回指定会话下最相近的历史消息。"""
+        normalized_query = query_text.strip()
+        if not normalized_query:
+            return []
+
+        embedding = self._embedding_provider.embed_text(normalized_query)
+        return self._repository.search_similar_by_user(
+            user_id=user_id,
+            im_type=im_type,
+            chat_id=chat_id,
+            query_vector=embedding,
+            limit=limit,
+            exclude_message_ids=exclude_message_ids,
+        )
 
 
 def _extract_text_content(record: MemoryRecord) -> str:

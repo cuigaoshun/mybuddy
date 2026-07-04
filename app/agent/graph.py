@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import json
 from typing import Literal
 
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, message_to_dict
 from langgraph.graph import END, START, StateGraph
 from loguru import logger
 from pydantic import BaseModel, ConfigDict
@@ -31,6 +32,7 @@ class ReplyState(BaseModel):
     message: IncomingChatMessage
     session_info: ChatSessionInfo
     recent_records: tuple[MemoryRecord, ...] = ()
+    similar_records: tuple[MemoryRecord, ...] = ()
     reply_text: str | None = None
 
 
@@ -43,9 +45,10 @@ def build_graph(chat_model: ChatModel):
             system_prompt=SYSTEM_PROMPT,
             session_info=state.session_info,
             recent_records=state.recent_records,
+            similar_records=state.similar_records,
             current_message=state.message,
         )
-        logger.info("请求模型提示词: {messages}", messages=_serialize_messages(messages))
+        logger.info("请求模型提示词: {}", json.dumps(_messages_to_jsonable(messages), ensure_ascii=False))
         reply = chat_model.invoke(messages)
         return state.model_copy(update={"reply_text": _extract_reply_text(reply)})
 
@@ -79,11 +82,24 @@ class GraphChatAgent:
                 exclude_message_id=message.message_id,
             )
         )
+        excluded_message_ids = {record.message_id for record in recent_records}
+        excluded_message_ids.add(message.message_id)
+        similar_records = tuple(
+            self._conversation_memory_service.search_similar_messages(
+                user_id=message.sender_id,
+                im_type=message.im_type,
+                chat_id=message.chat_id,
+                query_text=message.text,
+                limit=3,
+                exclude_message_ids=excluded_message_ids,
+            )
+        )
         result = self._compiled_graph.invoke(
             ReplyState(
                 message=message,
                 session_info=session_info,
                 recent_records=recent_records,
+                similar_records=similar_records,
             )
         )
         return result.get("reply_text")
@@ -93,27 +109,16 @@ def _build_prompt_messages(
     system_prompt: str,
     session_info: ChatSessionInfo,
     recent_records: tuple[MemoryRecord, ...],
+    similar_records: tuple[MemoryRecord, ...],
     current_message: IncomingChatMessage,
 ) -> list[BaseMessage]:
     messages: list[BaseMessage] = [SystemMessage(content=system_prompt)]
     messages.extend(_record_to_message(record) for record in recent_records)
+    similar_context_message = _build_similar_context_message(similar_records)
+    if similar_context_message is not None:
+        messages.append(similar_context_message)
     messages.append(HumanMessage(content=current_message.text))
     return messages
-
-
-def _serialize_messages(messages: list[BaseMessage]) -> list[dict[str, str]]:
-    serialized_messages: list[dict[str, str]] = []
-    for message in messages:
-        content = message.content if isinstance(message.content, str) else str(message.content)
-        serialized_messages.append(
-            {
-                "type": message.__class__.__name__,
-                "content": content,
-            }
-        )
-    return serialized_messages
-
-
 def _record_to_message(record: MemoryRecord) -> BaseMessage:
     text_value = record.content.get("text")
     content = text_value if isinstance(text_value, str) else ""
@@ -122,6 +127,28 @@ def _record_to_message(record: MemoryRecord) -> BaseMessage:
     if record.message_type == ASSISTANT_MESSAGE_TYPE:
         return AIMessage(content=content)
     return HumanMessage(content=content)
+
+
+def _messages_to_jsonable(messages: list[BaseMessage]) -> list[dict[str, object]]:
+    return [message_to_dict(message) for message in messages]
+
+
+def _build_similar_context_message(similar_records: tuple[MemoryRecord, ...]) -> SystemMessage | None:
+    if not similar_records:
+        return None
+
+    lines = ["以下是从历史记忆里召回的相似消息片段，仅供理解当前话题参考，不代表它们是刚刚连续发生的对话："]
+    for index, record in enumerate(similar_records, start=1):
+        role_name = "用户" if record.message_type == USER_MESSAGE_TYPE else "助手"
+        text_value = record.content.get("text")
+        content = text_value.strip() if isinstance(text_value, str) else ""
+        if not content:
+            continue
+        lines.append(f"{index}. {role_name}：{content}")
+
+    if len(lines) == 1:
+        return None
+    return SystemMessage(content="\n".join(lines))
 
 
 def _extract_reply_text(reply: AIMessage) -> str:

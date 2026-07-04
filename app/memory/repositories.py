@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Protocol
+from typing import Collection, Protocol
 
 from app.memory.models import ChatSessionInfo, MemoryRecord
 
@@ -16,6 +16,17 @@ class ConversationMemoryRepository(Protocol):
         im_type: str,
         chat_id: str,
         exclude_message_id: str | None = None,
+    ) -> list[MemoryRecord]:
+        ...
+
+    def search_similar_by_user(
+        self,
+        user_id: str,
+        im_type: str,
+        chat_id: str,
+        query_vector: list[float],
+        limit: int,
+        exclude_message_ids: Collection[str] | None = None,
     ) -> list[MemoryRecord]:
         ...
 
