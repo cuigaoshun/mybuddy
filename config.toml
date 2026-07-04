@@ -2,3 +2,12 @@
 app_id = ""
 app_secret = ""
 log_level = "INFO"
+
+[postgres]
+host = "ide.local"
+port = 5432
+user = "mybuddy"
+password = "123456"
+database = "mybuddy"
+schema = "public"
+connect_timeout_seconds = 5

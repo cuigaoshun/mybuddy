@@ -57,6 +57,14 @@
 - `app/services/`：IM 发送、LLM 调用等基础服务。
 - `app/workers/`：后台消费与异步任务。
 
+当前已经开始按一期方案落地：
+
+- `app/bootstrap/app.py` 负责应用内部依赖装配。
+- `app/bootstrap/feishu.py` 只负责飞书启动。
+- `app/gateway/dispatch/` 负责飞书消息分发与归一化。
+- `app/services/im_sender/` 负责统一发送能力与发送结果模型。
+- `app/memory/` 负责记忆写入抽象、向量化和 PostgreSQL 实现。
+
 目前很多文件仍是空骨架，所以本阶段先通过文档固定职责边界，后续实现按这些边界填充。
 
 ## 飞书接入说明
@@ -80,6 +88,28 @@
 
 - 仓储接口层：定义会话、消息、记忆、事件日志、发送记录等能力。
 - PG 实现层：负责 SQL、事务、索引和持久化细节。
+
+当前对话记忆最小实现使用：
+
+- 表：`chat_memory`
+- 主键：`GENERATED ALWAYS AS IDENTITY`
+- 时间字段：`message_time TIMESTAMPTZ`
+- 内容类型字段：`content_type`
+- 内容字段：`content JSONB`
+- 普通索引：`(userid, message_time)`
+- 去重索引：`(im_type, message_id, type)`
+- 向量索引：`HNSW`
+
+初始化 SQL 统一放在：
+
+- `scripts/init_chat_memory.sql`
+
+执行方式：
+
+- 先手动连接目标 PostgreSQL 数据库。
+- 再手动执行 `scripts/init_chat_memory.sql`。
+- 代码层不再负责建扩展、建表和建索引。
+- 当前代码与脚本都固定使用 `public.chat_memory`。
 
 这样做的目的是保证后续可以替换为别的实现，例如：
 

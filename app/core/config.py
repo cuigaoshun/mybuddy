@@ -32,10 +32,47 @@ class FeishuConfig(BaseModel):
         return value
 
 
+class PostgresConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    host: str = Field(min_length=1)
+    port: int = Field(default=5432, ge=1)
+    user: str = Field(min_length=1)
+    password: str = ""
+    database: str = Field(min_length=1)
+    database_schema: str = Field(default="public", min_length=1, alias="schema")
+    connect_timeout_seconds: int = Field(default=5, ge=1)
+
+    @field_validator("host", "user", "password", "database", "database_schema", mode="before")
+    @classmethod
+    def strip_string_value(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip()
+        return value
+
+    @field_validator("host", "user", "database", "database_schema")
+    @classmethod
+    def validate_required_value(cls, value: str) -> str:
+        if value == "":
+            raise ValueError("不能为空")
+        return value
+
+    def to_connection_kwargs(self) -> dict[str, object]:
+        return {
+            "host": self.host,
+            "port": self.port,
+            "user": self.user,
+            "password": self.password,
+            "dbname": self.database,
+            "connect_timeout": self.connect_timeout_seconds,
+        }
+
+
 class AppConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     feishu: FeishuConfig
+    postgres: PostgresConfig
 
 
 config: AppConfig | None = None
@@ -54,6 +91,15 @@ def load_config(config_path: Path) -> AppConfig:
             app_secret=settings.get("feishu.app_secret"),
             log_level=settings.get("feishu.log_level", "INFO"),
             log_dir=settings.get("feishu.log_dir", "logs"),
+        ),
+        postgres=PostgresConfig(
+            host=settings.get("postgres.host", "127.0.0.1"),
+            port=settings.get("postgres.port", 5432),
+            user=settings.get("postgres.user", "postgres"),
+            password=settings.get("postgres.password", ""),
+            database=settings.get("postgres.database", "mybuddy"),
+            schema=settings.get("postgres.schema", "public"),
+            connect_timeout_seconds=settings.get("postgres.connect_timeout_seconds", 5),
         ),
     )
 

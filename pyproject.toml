@@ -11,12 +11,11 @@ dependencies = [
     "langgraph>=1.2.7",
     "lark-oapi>=1.6.9",
     "loguru>=0.7.3",
+    "pgvector>=0.4.1",
     "pydantic>=2.13.4",
+    "psycopg[binary]>=3.2.9",
     "python-dotenv>=1.2.2",
+    "sqlalchemy>=2.0.41",
+    "sentence-transformers>=5.0.0",
     "uvicorn>=0.49.0",
 ]
-
-[[tool.uv.index]]
-name = "tuna"
-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
-default = true
