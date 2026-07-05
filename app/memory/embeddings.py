@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Protocol
 
 EMBEDDING_MODEL_NAME = "BAAI/bge-base-zh-v1.5"
 QUERY_INSTRUCTION = "为这个句子生成表示以用于检索相关文章："
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+LOCAL_EMBEDDING_MODEL_PATH = PROJECT_ROOT / "model" / "baai"
 
 
 class EmbeddingProvider(Protocol):
@@ -17,7 +20,9 @@ class EmbeddingProvider(Protocol):
 class SentenceTransformerEmbeddingProvider:
     def __init__(self, model_name: str = EMBEDDING_MODEL_NAME) -> None:
         from sentence_transformers import SentenceTransformer
-        self._model = SentenceTransformer("./model/baai")
+
+        resolved_model_path = _resolve_model_path(model_name)
+        self._model = SentenceTransformer(resolved_model_path)
         self._model_name = model_name
 
     def embed_document(self, text: str) -> list[float]:
@@ -36,3 +41,16 @@ class SentenceTransformerEmbeddingProvider:
         if hasattr(embedding, "tolist"):
             return [float(value) for value in embedding.tolist()]
         return [float(value) for value in embedding]
+
+
+def _resolve_model_path(model_name: str) -> str:
+    # 优先使用仓库内置模型目录，避免 IDE/脚本因工作目录不同找不到相对路径。
+    if LOCAL_EMBEDDING_MODEL_PATH.exists():
+        return str(LOCAL_EMBEDDING_MODEL_PATH)
+
+    candidate_path = Path(model_name)
+    if candidate_path.exists():
+        return str(candidate_path.resolve())
+
+    # 本地目录不存在时，回退到传入的模型名，允许走 HuggingFace 仓库名加载。
+    return model_name
