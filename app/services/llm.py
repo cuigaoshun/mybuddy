@@ -16,6 +16,9 @@ class ChatModel(Protocol):
     def bind_tools(self, tools: list[object]) -> "ChatModel":
         ...
 
+    def get_num_tokens_from_messages(self, messages: list[BaseMessage]) -> int:
+        ...
+
 
 def create_chat_model(config: LlmConfig) -> ChatOpenAI:
     return ChatOpenAI(
