@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import json
-
 from loguru import logger
 
 from app.agent.context.builder import ConversationContextBuilder
-from app.agent.util import extract_reply_text, messages_to_jsonable, tool_specs_to_jsonable
+from app.agent.util import extract_reply_text, format_messages_for_log
 
 from ...state import ReplyState
 
@@ -20,10 +18,20 @@ def reply_node(
     # 第二阶段根据是否已选 category，决定是直接回答还是动态绑定该类小工具。
     messages = list(state.messages)
     logger.info(
-        "当前绑定工具 schema:\n{}",
-        json.dumps(tool_specs_to_jsonable(state.context_bundle.enabled_tool_specs), ensure_ascii=False, indent=2),
+        "reply阶段开始，selected_tool_category={}，bound_tool_count={}，message_count={}",
+        state.selected_tool_category,
+        len(state.context_bundle.enabled_tool_specs),
+        len(messages),
     )
-    logger.info("请求模型提示词:\n{}", json.dumps(messages_to_jsonable(messages), ensure_ascii=False, indent=2))
+    if state.selected_tool_category is None:
+        logger.info("当前绑定工具: []")
+    else:
+        logger.info(
+            "当前绑定工具({}): {}",
+            state.selected_tool_category,
+            [tool_spec.name for tool_spec in state.context_bundle.enabled_tool_specs],
+        )
+    logger.info("请求模型提示词:\n{}", format_messages_for_log(messages))
     if state.selected_tool_category is None:
         # 没有选中任何工具大类时，走普通聊天模型直答。
         reply = chat_model.invoke(messages)
@@ -33,6 +41,11 @@ def reply_node(
             context_builder.list_langchain_tools_by_category(state.selected_tool_category)
         )
         reply = category_tool_model.invoke(messages)
+    logger.info(
+        "模型回复: text={} tool_calls={}",
+        extract_reply_text(reply),
+        getattr(reply, "tool_calls", []),
+    )
     updated_messages = tuple([*messages, reply])
     if getattr(reply, "tool_calls", None):
         # 一旦模型发起工具调用，就把 AIMessage 保留给工具节点继续处理。

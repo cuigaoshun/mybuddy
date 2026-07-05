@@ -4,13 +4,13 @@ from dataclasses import replace
 
 from app.agent.context.models import ContextBundle, ContextEvidenceBlock, ContextSessionSnapshot
 from app.agent.context.system_prompt import SYSTEM_PROMPT
-from app.agent.context.tools.models import SelectToolCategoryInput, ToolCategoryName
-from app.agent.context.tools.prompts import build_selected_category_prompt, build_tool_category_prompt, build_tool_selector_prompt
+from app.agent.context.tools.models import ToolCategoryName
+from app.agent.context.tools.prompts import build_tool_selector_description
 from app.agent.context.tools.registry import ToolRegistry
+from app.agent.context.tools.selector import build_category_selector_tool
 from app.event.models import IncomingChatMessage
 from app.memory.models import ChatSessionInfo, HistorySearchResult, MemoryRecord
 from app.memory.service import ConversationMemoryService
-from langchain_core.tools import tool
 
 
 class ConversationContextBuilder:
@@ -46,19 +46,17 @@ class ConversationContextBuilder:
         evidence_blocks = self._deduplicate_evidence(
             self._convert_memory_records_to_evidence(similar_records, source="similar_recall", recent_records=recent_records)
         )
-        # 当前先接入稳定的大类配置，再由模型自行决定需要哪个大类和哪个小工具。
+        # 首轮只暴露工具大类，不提前暴露任何子工具信息。
         enabled_tool_categories = self._tool_registry.list_tool_categories()
-        enabled_tool_specs = self._tool_registry.list_tool_specs()
         return ContextBundle(
             system_prompt=SYSTEM_PROMPT,
-            tool_selector_prompt=build_tool_selector_prompt(enabled_tool_categories),
-            tool_category_prompt=build_tool_category_prompt(enabled_tool_categories, enabled_tool_specs),
+            tool_category_prompt=None,
             current_message=message,
             session_snapshot=self._build_session_snapshot(message, session_info),
             recent_records=recent_records,
             evidence_blocks=evidence_blocks,
             enabled_tool_categories=enabled_tool_categories,
-            enabled_tool_specs=enabled_tool_specs,
+            enabled_tool_specs=(),
         )
 
     def append_tool_results(self, bundle: ContextBundle, results: tuple[HistorySearchResult, ...]) -> ContextBundle:
@@ -72,7 +70,7 @@ class ConversationContextBuilder:
         return replace(bundle, tool_evidence_blocks=tool_evidence_blocks)
 
     def select_tool_category(self, bundle: ContextBundle, category_name: ToolCategoryName) -> ContextBundle:
-        # 选定大类后，第二阶段只保留该大类的小工具说明，避免继续携带全量 schema。
+        # 选定大类后，第二阶段只保留该大类的小工具 schema，不再保留首轮 selector prompt。
         category = self._tool_registry.get_category(category_name)
         if category is None:
             return bundle
@@ -80,8 +78,7 @@ class ConversationContextBuilder:
         return replace(
             bundle,
             selected_tool_category=category_name,
-            tool_selector_prompt=None,
-            tool_category_prompt=build_selected_category_prompt(category, category_tool_specs),
+            tool_category_prompt=f"你已经决定使用工具大类 `{category.name}`（{category.title}）。现在只允许你在这个大类下选择具体小工具，不要再考虑其他大类。",
             enabled_tool_categories=(category,),
             enabled_tool_specs=category_tool_specs,
         )
@@ -94,14 +91,7 @@ class ConversationContextBuilder:
         return self._tool_registry.list_langchain_tools_by_category(category_name)
 
     def build_category_selector_tool(self) -> object:
-        category_names = ", ".join(category.name for category in self._tool_registry.list_tool_categories())
-
-        @tool("select_tool_category", args_schema=SelectToolCategoryInput)
-        def select_tool_category_tool(category_name: str) -> str:
-            """当你判断需要使用工具时，先选择最匹配的工具大类。可选大类："""
-            return f"请通过工具调用选择工具大类。当前可选大类：{category_names}。你必须传入 category_name。"
-
-        return select_tool_category_tool
+        return build_category_selector_tool(self._tool_registry.list_tool_categories())
 
     def get_tool_registry(self) -> ToolRegistry:
         return self._tool_registry

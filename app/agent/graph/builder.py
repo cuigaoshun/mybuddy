@@ -70,7 +70,7 @@ def build_graph(chat_model: ChatModel, conversation_memory_service: Conversation
     # 整体流程：START -> input -> select_category -> reply -> (tool -> reply)* -> END。
     graph.add_edge(START, "input")
     graph.add_edge("input", "select_category")
-    graph.add_conditional_edges("select_category", route_after_select_category, {"reply": "reply"})
+    graph.add_conditional_edges("select_category", route_after_select_category, {"input": "input", "reply": "reply", "end": END})
     graph.add_conditional_edges("reply", route_after_reply, {"tool": "tool", "end": END})
     graph.add_edge("tool", "reply")
     return graph.compile()

@@ -27,10 +27,6 @@ class ConversationContextFormatter:
     def _build_system_message(self, bundle: ContextBundle) -> SystemMessage:
         # 把固定系统提示和轻量会话摘要合并成稳定的系统前缀。
         lines = [bundle.system_prompt.strip()]
-        if bundle.tool_selector_prompt:
-            # 显式给模型一段“大类选择器”协议，先选 category 再选具体 tool。
-            lines.append("")
-            lines.append(bundle.tool_selector_prompt)
         if bundle.tool_category_prompt:
             # 工具说明按大类动态拼进系统层，兼顾稳定前缀和可扩展性。
             lines.append("")

@@ -42,12 +42,6 @@ class ToolExecutionResult:
 
 
 @dataclass(frozen=True, slots=True)
-class CategorySelectionResult:
-    selected_category_name: ToolCategoryName | None
-    should_use_tool: bool
-
-
-@dataclass(frozen=True, slots=True)
 class ToolDefinition:
     spec: ToolSpec
     execute: Callable[[dict[str, object], ToolCallContext, str], ToolExecutionResult]

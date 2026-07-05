@@ -35,7 +35,6 @@ class ContextSessionSnapshot:
 @dataclass(frozen=True, slots=True)
 class ContextBundle:
     system_prompt: str
-    tool_selector_prompt: str | None
     tool_category_prompt: str | None
     current_message: IncomingChatMessage
     session_snapshot: ContextSessionSnapshot
