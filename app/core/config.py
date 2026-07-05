@@ -91,12 +91,27 @@ class LlmConfig(BaseModel):
         return value
 
 
+class ExaConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    api_key: str = ""
+    default_limit: int = Field(default=5, ge=1, le=10)
+
+    @field_validator("api_key", mode="before")
+    @classmethod
+    def strip_optional_string_value(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip()
+        return value
+
+
 class AppConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     feishu: FeishuConfig
     postgres: PostgresConfig
     llm: LlmConfig
+    exa: ExaConfig
 
 
 def init_config(config_path: Path = DEFAULT_CONFIG_PATH) -> AppConfig:
@@ -127,5 +142,9 @@ def init_config(config_path: Path = DEFAULT_CONFIG_PATH) -> AppConfig:
             api_key=settings.get("llm.api_key"),
             base_url=settings.get("llm.base_url"),
             temperature=settings.get("llm.temperature", 0.7),
+        ),
+        exa=ExaConfig(
+            api_key=settings.get("exa.api_key", ""),
+            default_limit=settings.get("exa.default_limit", 5),
         ),
     )

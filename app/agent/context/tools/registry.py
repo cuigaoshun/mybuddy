@@ -1,15 +1,23 @@
 from __future__ import annotations
 
 from app.agent.context.tools.history import build_history_tool_definition
+from app.agent.context.tools.web_search import build_web_search_tool_definition
 from app.agent.context.tools.models import ToolCategory, ToolCategoryName, ToolDefinition, ToolSpec
 from app.memory.service import ConversationMemoryService
+from app.services.web_search import ExaWebSearchService
 
 
 class ToolRegistry:
-    def __init__(self, conversation_memory_service: ConversationMemoryService) -> None:
+    def __init__(
+        self,
+        conversation_memory_service: ConversationMemoryService,
+        web_search_service: ExaWebSearchService,
+    ) -> None:
         history_definition = build_history_tool_definition(conversation_memory_service)
+        web_search_definition = build_web_search_tool_definition(web_search_service)
         self._tool_definitions: dict[str, ToolDefinition] = {
             history_definition.spec.name: history_definition,
+            web_search_definition.spec.name: web_search_definition,
         }
 
     def list_tool_categories(self) -> tuple[ToolCategory, ...]:

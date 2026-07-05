@@ -8,10 +8,12 @@ if __package__ in {None, ""}:
     from app.agent.graph.builder import build_graph
     from app.memory.service import ConversationMemoryService
     from app.services.llm import ChatModel
+    from app.services.web_search import ExaWebSearchService
 else:
     from .builder import build_graph
     from app.memory.service import ConversationMemoryService
     from app.services.llm import ChatModel
+    from app.services.web_search import ExaWebSearchService
 
 
 def render_graph_png(compiled_graph, output_path: str | Path | None = None) -> bytes:
@@ -30,6 +32,7 @@ def render_graph_png(compiled_graph, output_path: str | Path | None = None) -> b
 def build_and_render_graph_png(
     chat_model: ChatModel,
     conversation_memory_service: ConversationMemoryService,
+    web_search_service: ExaWebSearchService,
     output_path: str | Path | None = None,
 ) -> bytes:
     """直接基于依赖构建业务图并导出 PNG。"""
@@ -38,6 +41,7 @@ def build_and_render_graph_png(
     compiled_graph = build_graph(
         chat_model=chat_model,
         conversation_memory_service=conversation_memory_service,
+        web_search_service=web_search_service,
     )
     return render_graph_png(compiled_graph=compiled_graph, output_path=output_path)
 
@@ -57,12 +61,14 @@ if __name__ == "__main__":
     container.feishu_config.override(providers.Object(config.feishu))
     container.postgres_config.override(providers.Object(config.postgres))
     container.llm_config.override(providers.Object(config.llm))
+    container.exa_config.override(providers.Object(config.exa))
     container.event_bus.override(providers.Object(EventBus()))
 
     output_path = Path("./agent-graph.png")
     png_bytes = build_and_render_graph_png(
         chat_model=container.chat_model(),
         conversation_memory_service=container.conversation_memory_service(),
+        web_search_service=container.web_search_service(),
         output_path=output_path,
     )
     print(f"已生成 Agent 图 PNG：{output_path}（{len(png_bytes)} bytes）")

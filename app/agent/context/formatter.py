@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 
-from app.agent.context.models import ContextBundle, ContextEvidenceBlock
+from app.agent.context.models import ContextBundle, ContextEvidenceBlock, ToolContextBlock
 from app.memory.models import ASSISTANT_MESSAGE_TYPE, USER_MESSAGE_TYPE, MemoryRecord
 
 
@@ -20,6 +20,9 @@ class ConversationContextFormatter:
         tool_evidence_message = self._build_tool_evidence_message(bundle.tool_evidence_blocks)
         if tool_evidence_message is not None:
             messages.append(tool_evidence_message)
+        tool_context_message = self._build_tool_context_message(bundle.tool_context_blocks)
+        if tool_context_message is not None:
+            messages.append(tool_context_message)
         # 当前用户消息始终放在最后，保证最终提问位置稳定。
         messages.append(self._build_current_message(bundle))
         return tuple(messages)
@@ -97,3 +100,11 @@ class ConversationContextFormatter:
         if not match_parts:
             return source_name
         return f"{source_name}（{' + '.join(match_parts)}）"
+
+    def _build_tool_context_message(self, tool_context_blocks: tuple[ToolContextBlock, ...]) -> SystemMessage | None:
+        if not tool_context_blocks:
+            return None
+        lines = ["以下是本轮工具补充得到的参考信息，仅供回答当前问题参考："]
+        for index, block in enumerate(tool_context_blocks, start=1):
+            lines.append(f"{index}. 工具：{block.tool_name}｜内容：{block.content_text}")
+        return SystemMessage(content="\n".join(lines))

@@ -17,3 +17,7 @@ model = "gpt-5.4"
 api_key = ""
 base_url = ""
 temperature = 0.7
+
+[exa]
+api_key = ""
+default_limit = 5

@@ -12,6 +12,12 @@ ContextEvidenceSource = Literal["similar_recall", "history_search"]
 
 
 @dataclass(frozen=True, slots=True)
+class ToolContextBlock:
+    tool_name: str
+    content_text: str
+
+
+@dataclass(frozen=True, slots=True)
 class ContextEvidenceBlock:
     message_id: str
     message_type: int
@@ -44,3 +50,4 @@ class ContextBundle:
     enabled_tool_specs: tuple[ToolSpec, ...]
     selected_tool_category: ToolCategoryName | None = None
     tool_evidence_blocks: tuple[ContextEvidenceBlock, ...] = ()
+    tool_context_blocks: tuple[ToolContextBlock, ...] = ()

@@ -12,6 +12,7 @@ dependencies = [
     "langgraph>=1.2.7",
     "lark-oapi>=1.7.0",
     "loguru>=0.7.3",
+    "exa-py>=1.14.20",
     "pgvector>=0.4.1",
     "pydantic>=2.13.4",
     "psycopg[binary]>=3.2.9",

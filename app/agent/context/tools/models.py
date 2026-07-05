@@ -7,7 +7,7 @@ from typing import Callable, Literal
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
-ToolCategoryName = Literal["history_tools", "memory_tools"]
+ToolCategoryName = Literal["history_tools", "memory_tools", "web_search_tools"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,6 +53,11 @@ class SearchHistoryToolInput(BaseModel):
     end_time: str | None = Field(default=None, description="结束时间，ISO 8601 字符串，例如 2026-07-05T23:59:59+08:00。")
 
 
+class WebSearchToolInput(BaseModel):
+    query: str = Field(min_length=1, description="要检索的网页搜索查询语句。")
+    limit: int | None = Field(default=None, ge=1, le=10, description="返回结果条数，默认使用系统配置。")
+
+
 class SelectToolCategoryInput(BaseModel):
     category_name: ToolCategoryName = Field(description="选中的工具大类名称。")
 
@@ -68,12 +73,5 @@ def parse_tool_datetime(value: str | None) -> datetime | None:
 
 def extract_tool_arguments(tool_args: object) -> dict[str, object]:
     if not isinstance(tool_args, dict):
-        return {"text": "", "start_time": None, "end_time": None}
-    text = tool_args.get("text")
-    start_time = tool_args.get("start_time")
-    end_time = tool_args.get("end_time")
-    return {
-        "text": text if isinstance(text, str) else "",
-        "start_time": start_time if isinstance(start_time, str) else None,
-        "end_time": end_time if isinstance(end_time, str) else None,
-    }
+        return {}
+    return dict(tool_args)

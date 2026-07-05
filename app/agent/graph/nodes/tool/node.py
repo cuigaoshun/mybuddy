@@ -48,6 +48,11 @@ def tool_node(
             continue
         # 工具的结构化结果进入上下文包，供下一轮模型继续使用。
         next_bundle = context_builder.append_tool_results(next_bundle, execution_result.structured_results)
+        next_bundle = context_builder.append_tool_context(
+            next_bundle,
+            tool_name=execution_result.tool_name,
+            content_text=execution_result.text,
+        )
         # 同时把工具结果作为 ToolMessage 追加到消息序列里，维持 LangGraph 工具回环格式。
         updated_messages.append(
             ToolMessage(
@@ -60,5 +65,6 @@ def tool_node(
         update={
             "messages": tuple(updated_messages),
             "context_bundle": next_bundle,
+            "refresh_after_tool": state.refresh_after_tool,
         }
     )

@@ -7,7 +7,7 @@ from app.agent.graph import GraphChatAgent, build_graph
 from app.bootstrap.feishu import create_feishu_client
 from app.bootstrap.listener import Listener
 from app.bootstrap.postgres import get_engine
-from app.core.config import LlmConfig
+from app.core.config import ExaConfig, LlmConfig
 from app.event.bus import EventBus
 from app.gateway.dispatch import FeishuDispatcher
 from app.memory.embeddings import SentenceTransformerEmbeddingProvider
@@ -18,6 +18,7 @@ from app.memory.session_info_service import ChatSessionInfoService
 from app.router.session_manager import SessionManager
 from app.services.llm import create_chat_model
 from app.services.im_sender import FeishuMessageSender
+from app.services.web_search import ExaWebSearchService
 
 
 class AppContainer(containers.DeclarativeContainer):
@@ -33,6 +34,9 @@ class AppContainer(containers.DeclarativeContainer):
 
     # LLM 配置对象。
     llm_config = providers.Dependency(instance_of=LlmConfig)
+
+    # Exa 配置对象。
+    exa_config = providers.Dependency(instance_of=ExaConfig)
 
     # 全局事件总线对象。
     event_bus = providers.Dependency(instance_of=EventBus)
@@ -65,17 +69,22 @@ class AppContainer(containers.DeclarativeContainer):
     # 聊天模型客户端，应用生命周期内复用。
     chat_model = providers.Singleton(create_chat_model, config=llm_config)
 
+    # 网页搜索服务，应用生命周期内复用。
+    web_search_service = providers.Singleton(ExaWebSearchService, config=exa_config)
+
     # 编译后的 LangGraph，应用生命周期内复用。
     agent_graph = providers.Singleton(
         build_graph,
         chat_model=chat_model,
         conversation_memory_service=conversation_memory_service,
+        web_search_service=web_search_service,
     )
 
     # 上下文构建器，统一管理系统提示词、召回证据和消息预算。
     context_builder = providers.Singleton(
         ConversationContextBuilder,
         conversation_memory_service=conversation_memory_service,
+        web_search_service=web_search_service,
     )
 
     # 聊天 Agent，负责读取最近记忆并调用图。

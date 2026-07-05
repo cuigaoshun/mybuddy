@@ -26,3 +26,7 @@ class ReplyState(BaseModel):
     messages: tuple[BaseMessage, ...] = ()
     # 第一阶段工具分类选择器选中的工具大类。
     selected_tool_category: ToolCategoryName | None = None
+    # 是否已经完成首阶段 select_tool 决策。
+    tool_selection_completed: bool = False
+    # 首阶段是否需要在工具执行后刷新上下文消息。
+    refresh_after_tool: bool = False

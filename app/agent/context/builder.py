@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from app.agent.context.models import ContextBundle, ContextEvidenceBlock, ContextSessionSnapshot
+from app.agent.context.models import ContextBundle, ContextEvidenceBlock, ContextSessionSnapshot, ToolContextBlock
 from app.agent.context.system_prompt import SYSTEM_PROMPT
 from app.agent.context.tools.models import ToolCategoryName
 from app.agent.context.tools.prompts import build_tool_selector_description
@@ -11,12 +11,17 @@ from app.agent.context.tools.selector import build_category_selector_tool
 from app.event.models import IncomingChatMessage
 from app.memory.models import ChatSessionInfo, HistorySearchResult, MemoryRecord
 from app.memory.service import ConversationMemoryService
+from app.services.web_search import ExaWebSearchService
 
 
 class ConversationContextBuilder:
-    def __init__(self, conversation_memory_service: ConversationMemoryService) -> None:
+    def __init__(
+        self,
+        conversation_memory_service: ConversationMemoryService,
+        web_search_service: ExaWebSearchService,
+    ) -> None:
         self._conversation_memory_service = conversation_memory_service
-        self._tool_registry = ToolRegistry(conversation_memory_service)
+        self._tool_registry = ToolRegistry(conversation_memory_service, web_search_service)
 
     def build_initial_bundle(self, message: IncomingChatMessage, session_info: ChatSessionInfo) -> ContextBundle:
         # 先读取最近连续对话，作为当前回复最核心的上下文。
@@ -69,6 +74,18 @@ class ConversationContextBuilder:
         )
         return replace(bundle, tool_evidence_blocks=tool_evidence_blocks)
 
+    def append_tool_context(self, bundle: ContextBundle, tool_name: str, content_text: str) -> ContextBundle:
+        normalized_content = content_text.strip()
+        if normalized_content == "":
+            return bundle
+        tool_context_blocks = tuple(
+            [
+                *bundle.tool_context_blocks,
+                ToolContextBlock(tool_name=tool_name, content_text=normalized_content),
+            ]
+        )
+        return replace(bundle, tool_context_blocks=tool_context_blocks)
+
     def select_tool_category(self, bundle: ContextBundle, category_name: ToolCategoryName) -> ContextBundle:
         # 选定大类后，第二阶段只保留该大类的小工具 schema，不再保留首轮 selector prompt。
         category = self._tool_registry.get_category(category_name)
@@ -89,6 +106,9 @@ class ConversationContextBuilder:
 
     def list_langchain_tools_by_category(self, category_name: ToolCategoryName) -> list[object]:
         return self._tool_registry.list_langchain_tools_by_category(category_name)
+
+    def list_entry_langchain_tools(self) -> list[object]:
+        return self.list_langchain_tools_by_category("web_search_tools")
 
     def build_category_selector_tool(self) -> object:
         return build_category_selector_tool(self._tool_registry.list_tool_categories())

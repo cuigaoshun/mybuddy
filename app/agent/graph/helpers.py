@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from loguru import logger
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
 
 from app.agent.context.tools.models import ToolCategoryName
 from app.agent.util import extract_reply_text, format_messages_for_log
@@ -21,7 +21,7 @@ def extract_selected_category(reply: AIMessage) -> ToolCategoryName | None:
             continue
         category_name = tool_args.get("category_name")
         # 目前仅接受仓库里声明过的合法工具大类。
-        if category_name in {"history_tools", "memory_tools"}:
+        if category_name in {"history_tools", "memory_tools", "web_search_tools"}:
             return category_name
     return None
 
@@ -37,15 +37,37 @@ def extract_selector_reply_text(reply: AIMessage) -> str | None:
     return reply_text
 
 
-def invoke_model(model, messages: list, bound_tools_summary: str) -> AIMessage:
-    """统一封装模型调用日志：调用前打提示词和工具摘要，调用后打回复。"""
+def has_non_category_tool_call(reply: AIMessage) -> bool:
+    for tool_call in getattr(reply, "tool_calls", []) or []:
+        tool_name = tool_call.get("name")
+        if isinstance(tool_name, str) and tool_name != "select_tool_category":
+            return True
+    return False
 
+
+def invoke_model(model, messages: list, bound_tools_summary: str) -> AIMessage:
+    """统一封装模型调用：把绑定工具摘要注入上下文并记录日志。"""
+
+    effective_messages = _inject_bound_tools_context(messages, bound_tools_summary)
     logger.info("当前绑定工具: {}", bound_tools_summary)
-    logger.info("请求模型提示词:\n{}", format_messages_for_log(messages))
-    reply = model.invoke(messages)
+    logger.info("请求模型提示词:\n{}", format_messages_for_log(effective_messages))
+    reply = model.invoke(effective_messages)
     logger.info(
         "模型回复: text={} tool_calls={}",
         extract_reply_text(reply),
         getattr(reply, "tool_calls", []),
     )
     return reply
+
+
+def _inject_bound_tools_context(messages: list[BaseMessage], bound_tools_summary: str) -> list[BaseMessage]:
+    normalized_summary = bound_tools_summary.strip()
+    if normalized_summary in {"", "[]"}:
+        return messages
+
+    tool_context_line = f"当前绑定工具：{normalized_summary}"
+    if messages and isinstance(messages[0], SystemMessage):
+        first_message = messages[0]
+        merged_content = f"{first_message.content}\n\n{tool_context_line}"
+        return [SystemMessage(content=merged_content), *messages[1:]]
+    return [SystemMessage(content=tool_context_line), *messages]

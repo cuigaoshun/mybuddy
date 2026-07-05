@@ -27,4 +27,4 @@ def refresh_messages_node(
 
     # 这里只刷新消息，不再重新进入 selector 阶段，避免工具大类被重复选择。
     messages = context_budgeter.trim_messages(context_formatter.format(state.context_bundle))
-    return state.model_copy(update={"messages": messages})
+    return state.model_copy(update={"messages": messages, "refresh_after_tool": False})

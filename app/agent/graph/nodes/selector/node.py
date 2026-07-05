@@ -4,8 +4,74 @@ from loguru import logger
 
 from app.agent.context.builder import ConversationContextBuilder
 
-from ...helpers import extract_selected_category, extract_selector_reply_text, invoke_model
+from ...helpers import extract_selected_category, extract_selector_reply_text, has_non_category_tool_call, invoke_model
 from ...state import ReplyState
+
+
+def select_tool_node(
+    state: ReplyState,
+    tool_selector_model,
+    context_builder: ConversationContextBuilder,
+) -> ReplyState:
+    """第一阶段节点：先统一决定是否直接调工具，或先选择工具大类。"""
+
+    messages = list(state.messages)
+    entry_tools = context_builder.list_entry_langchain_tools()
+    bound_tool_names = ["select_tool_category", *[tool.name for tool in entry_tools]]
+    logger.info(
+        "select_tool阶段开始，category_count={}，tool_count={}，message_count={}，selected_tool_category={}",
+        len(state.context_bundle.enabled_tool_categories),
+        len(entry_tools),
+        len(messages),
+        state.selected_tool_category,
+    )
+    reply = invoke_model(
+        model=tool_selector_model,
+        messages=messages,
+        bound_tools_summary=str(bound_tool_names),
+    )
+    updated_messages = tuple([*messages, reply])
+    selected_category = extract_selected_category(reply)
+    if has_non_category_tool_call(reply):
+        logger.info("select_tool阶段直接选中了具体工具，进入工具执行")
+        return state.model_copy(
+            update={
+                "messages": updated_messages,
+                "tool_selection_completed": True,
+                "refresh_after_tool": True,
+            }
+        )
+    if selected_category is None:
+        selector_reply_text = extract_selector_reply_text(reply)
+        if selector_reply_text is not None:
+            logger.info("select_tool阶段直接给出最终回复，结束图流程")
+            return state.model_copy(
+                update={
+                    "messages": updated_messages,
+                    "reply_text": selector_reply_text,
+                    "tool_selection_completed": True,
+                    "refresh_after_tool": False,
+                }
+            )
+        logger.info("select_tool阶段未选工具，转入普通回复")
+        return state.model_copy(
+            update={
+                "messages": updated_messages,
+                "tool_selection_completed": True,
+                "refresh_after_tool": False,
+            }
+        )
+    logger.info("select_tool阶段选中工具大类：{}", selected_category)
+    next_bundle = context_builder.select_tool_category(state.context_bundle, selected_category)
+    return state.model_copy(
+        update={
+            "messages": updated_messages,
+            "context_bundle": next_bundle,
+            "selected_tool_category": selected_category,
+            "tool_selection_completed": True,
+            "refresh_after_tool": False,
+        }
+    )
 
 
 def select_category_node(
@@ -13,39 +79,8 @@ def select_category_node(
     category_selector_model,
     context_builder: ConversationContextBuilder,
 ) -> ReplyState:
-    """第一阶段节点：先判断要不要工具，并选出工具大类。"""
-
-    # 第一阶段只绑定 selector tool，让模型先决定是否需要工具和选哪个大类。
-    messages = list(state.messages)
-    logger.info(
-        "selector阶段开始，category_count={}，message_count={}，selected_tool_category={}",
-        len(state.context_bundle.enabled_tool_categories),
-        len(messages),
-        state.selected_tool_category,
-    )
-    # 这一轮调用只允许模型产出 category 选择，不暴露业务小工具 schema。
-    reply = invoke_model(
-        model=category_selector_model,
-        messages=messages,
-        bound_tools_summary="[select_tool_category]",
-    )
-    updated_messages = tuple([*messages, reply])
-    selected_category = extract_selected_category(reply)
-    if selected_category is None:
-        selector_reply_text = extract_selector_reply_text(reply)
-        if selector_reply_text is not None:
-            logger.info("selector阶段直接给出最终回复，结束图流程")
-            return state.model_copy(update={"messages": updated_messages, "reply_text": selector_reply_text})
-        # 如果模型没有选工具大类，后续就按普通回复路径继续。
-        logger.info("selector阶段未选择工具大类，转入普通回复")
-        return state.model_copy(update={"messages": updated_messages})
-    # 一旦选中大类，就把上下文包收窄到该大类的小工具集合。
-    logger.info("selector阶段选中工具大类：{}", selected_category)
-    next_bundle = context_builder.select_tool_category(state.context_bundle, selected_category)
-    return state.model_copy(
-        update={
-            "messages": updated_messages,
-            "context_bundle": next_bundle,
-            "selected_tool_category": selected_category,
-        }
+    return select_tool_node(
+        state=state,
+        tool_selector_model=category_selector_model,
+        context_builder=context_builder,
     )
