@@ -155,14 +155,15 @@ connect_timeout_seconds = 5
 定义一个嵌入提供者接口，例如：
 
 - `EmbeddingProvider`
-  - `embed_text(text: str) -> list[float]`
+  - `embed_document(text: str) -> list[float]`
+  - `embed_query(text: str) -> list[float]`
   - `dimension() -> int`
   - `model_name() -> str`
 
 一期默认实现：
 
 - `SentenceTransformerEmbeddingProvider`
-- 模型固定为 `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`
+- 模型固定为 `BAAI/bge-base-zh-v1.5`
 
 这样以后如果要换模型，`router`、`agent`、`gateway` 都不用改。
 

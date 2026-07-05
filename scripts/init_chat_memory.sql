@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS public.chat_memory (
     message_time timestamptz NOT NULL,
     content_type text NOT NULL,
     content jsonb NOT NULL,
-    content_vector vector(384) NOT NULL
+    content_vector vector(768) NOT NULL
 );
 
 -- 字段注释。
@@ -32,7 +32,7 @@ COMMENT ON COLUMN public.chat_memory.im_type IS 'IM 平台类型，一期固定�
 COMMENT ON COLUMN public.chat_memory.message_time IS '消息时间，带时区时间';
 COMMENT ON COLUMN public.chat_memory.content_type IS '内容类型，一期固定为 text';
 COMMENT ON COLUMN public.chat_memory.content IS '消息内容，JSONB 结构，当前为 {"text": "..."}';
-COMMENT ON COLUMN public.chat_memory.content_vector IS '内容向量，维度固定为 384';
+COMMENT ON COLUMN public.chat_memory.content_vector IS '内容向量，维度固定为 768';
 
 -- 3. 用户平台时间联合索引，用于按用户最近时间线读取消息。
 CREATE INDEX IF NOT EXISTS idx_chat_memory_user_id_im_type_message_time

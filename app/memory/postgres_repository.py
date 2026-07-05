@@ -35,7 +35,7 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
             Column("message_time", DateTime(timezone=True), nullable=False),
             Column("content_type", Text, nullable=False),
             Column("content", JSONB, nullable=False),
-            Column("content_vector", Vector(384), nullable=False),
+            Column("content_vector", Vector(768), nullable=False),
             Index("idx_chat_memory_user_id_im_type_message_time", "user_id", "im_type", "message_time"),
             Index("idx_chat_memory_im_type_message_id_type", "im_type", "message_id", "type", unique=True),
             Index(

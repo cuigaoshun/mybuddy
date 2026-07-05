@@ -22,7 +22,7 @@ class ConversationMemoryService:
 
     def store(self, record: MemoryRecord) -> bool:
         """把一条记忆记录转换为向量后写入仓储。"""
-        embedding = self._embedding_provider.embed_text(_extract_text_content(record))
+        embedding = self._embedding_provider.embed_document(_extract_text_content(record))
         return self._repository.save(record, embedding)
 
     def list_recent_messages(
@@ -49,7 +49,7 @@ class ConversationMemoryService:
         if not recent_question:
             return []
 
-        embedding = self._embedding_provider.embed_text(recent_question)
+        embedding = self._embedding_provider.embed_query(recent_question)
         matched_records = self._repository.search_similar_by_user(
             user_id=user_id,
             im_type=im_type,
@@ -99,7 +99,7 @@ class ConversationMemoryService:
             exclude_message_ids=exclude_message_ids,
         )
 
-        query_vector = self._embedding_provider.embed_text(normalized_query.text)
+        query_vector = self._embedding_provider.embed_query(normalized_query.text)
         vector_records = self._repository.search_similar_by_user(
             user_id=normalized_query.user_id,
             im_type=normalized_query.im_type,
