@@ -47,7 +47,12 @@ CREATE INDEX IF NOT EXISTS idx_chat_memory_content_vector_hnsw
 ON public.chat_memory
 USING hnsw (content_vector vector_cosine_ops);
 
--- 6. 创建会话信息表，当前用于维护 user_id + im_type + chat_id 维度的最新回复时间。
+-- 6. content.text 全文检索 GIN 索引，用于历史消息关键词检索。
+CREATE INDEX IF NOT EXISTS idx_chat_memory_content_text_fts
+ON public.chat_memory
+USING gin (to_tsvector('simple', coalesce(content->>'text', '')));
+
+-- 7. 创建会话信息表，当前用于维护 user_id + im_type + chat_id 维度的最新回复时间。
 CREATE TABLE IF NOT EXISTS public.chat_session_info (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id text NOT NULL,

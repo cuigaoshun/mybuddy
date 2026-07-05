@@ -68,6 +68,7 @@ class AppContainer(containers.DeclarativeContainer):
     agent_graph = providers.Singleton(
         build_graph,
         chat_model=chat_model,
+        conversation_memory_service=conversation_memory_service,
     )
 
     # 聊天 Agent，负责读取最近记忆并调用图。

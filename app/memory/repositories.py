@@ -26,6 +26,33 @@ class ConversationMemoryRepository(Protocol):
         chat_id: str,
         query_vector: list[float],
         limit: int,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        exclude_message_ids: Collection[str] | None = None,
+    ) -> list[MemoryRecord]:
+        ...
+
+    def search_text_by_user(
+        self,
+        user_id: str,
+        im_type: str,
+        chat_id: str,
+        query_text: str,
+        limit: int,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        exclude_message_ids: Collection[str] | None = None,
+    ) -> list[MemoryRecord]:
+        ...
+
+    def list_by_time_range(
+        self,
+        user_id: str,
+        im_type: str,
+        chat_id: str,
+        start_time: datetime | None,
+        end_time: datetime | None,
+        limit: int,
         exclude_message_ids: Collection[str] | None = None,
     ) -> list[MemoryRecord]:
         ...

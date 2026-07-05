@@ -4,7 +4,7 @@ from collections.abc import Collection
 from datetime import UTC, datetime
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import BigInteger, Column, DateTime, Identity, Index, MetaData, SmallInteger, Table, Text, desc, func, select
+from sqlalchemy import BigInteger, Column, DateTime, Identity, Index, MetaData, SmallInteger, Table, Text, bindparam, desc, func, select
 from sqlalchemy.dialects.postgresql import JSONB, insert
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
@@ -128,6 +128,8 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
         chat_id: str,
         query_vector: list[float],
         limit: int,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         exclude_message_ids: Collection[str] | None = None,
     ) -> list[MemoryRecord]:
         """按向量相似度召回指定会话下最接近的历史消息。"""
@@ -152,6 +154,7 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
             .order_by(distance, desc(self._table.c.id))
             .limit(limit)
         )
+        statement = _apply_time_range_filters(statement, self._table.c.message_time, start_time, end_time)
         if exclude_message_ids:
             statement = statement.where(self._table.c.message_id.not_in(list(exclude_message_ids)))
 
@@ -171,6 +174,120 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
             )
             for row in rows
         ]
+
+    def search_text_by_user(
+        self,
+        user_id: str,
+        im_type: str,
+        chat_id: str,
+        query_text: str,
+        limit: int,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        exclude_message_ids: Collection[str] | None = None,
+    ) -> list[MemoryRecord]:
+        """按全文检索查询指定会话下的历史消息。"""
+        ts_query = func.websearch_to_tsquery("simple", bindparam("search_text", query_text))
+        search_vector = func.to_tsvector(
+            "simple",
+            func.coalesce(self._table.c.content.op("->>")("text"), ""),
+        )
+        rank = func.ts_rank_cd(search_vector, ts_query)
+        statement = (
+            select(
+                self._table.c.id,
+                self._table.c.user_id,
+                self._table.c.chat_id,
+                self._table.c.message_id,
+                self._table.c.type,
+                self._table.c.im_type,
+                self._table.c.message_time,
+                self._table.c.content_type,
+                self._table.c.content,
+            )
+            .where(
+                self._table.c.user_id == user_id,
+                self._table.c.im_type == im_type,
+                self._table.c.chat_id == chat_id,
+                search_vector.op("@@")(ts_query),
+            )
+            .order_by(desc(rank), desc(self._table.c.message_time), desc(self._table.c.id))
+            .limit(limit)
+        )
+        statement = _apply_time_range_filters(statement, self._table.c.message_time, start_time, end_time)
+        if exclude_message_ids:
+            statement = statement.where(self._table.c.message_id.not_in(list(exclude_message_ids)))
+
+        with self._engine.begin() as connection:
+            rows = connection.execute(statement).mappings().all()
+
+        return [
+            MemoryRecord(
+                user_id=row["user_id"],
+                chat_id=row["chat_id"],
+                message_id=row["message_id"],
+                message_type=row["type"],
+                im_type=row["im_type"],
+                message_time=row["message_time"],
+                content_type=row["content_type"],
+                content=row["content"],
+            )
+            for row in rows
+        ]
+
+    def list_by_time_range(
+        self,
+        user_id: str,
+        im_type: str,
+        chat_id: str,
+        start_time: datetime | None,
+        end_time: datetime | None,
+        limit: int,
+        exclude_message_ids: Collection[str] | None = None,
+    ) -> list[MemoryRecord]:
+        """按时间范围顺序查询历史消息。"""
+        statement = (
+            select(
+                self._table.c.id,
+                self._table.c.user_id,
+                self._table.c.chat_id,
+                self._table.c.message_id,
+                self._table.c.type,
+                self._table.c.im_type,
+                self._table.c.message_time,
+                self._table.c.content_type,
+                self._table.c.content,
+            )
+            .where(
+                self._table.c.user_id == user_id,
+                self._table.c.im_type == im_type,
+                self._table.c.chat_id == chat_id,
+            )
+            .order_by(desc(self._table.c.message_time), desc(self._table.c.id))
+            .limit(limit)
+        )
+        statement = _apply_time_range_filters(statement, self._table.c.message_time, start_time, end_time)
+        if exclude_message_ids:
+            statement = statement.where(self._table.c.message_id.not_in(list(exclude_message_ids)))
+
+        with self._engine.begin() as connection:
+            rows = connection.execute(statement).mappings().all()
+
+        records = [
+            MemoryRecord(
+                user_id=row["user_id"],
+                chat_id=row["chat_id"],
+                message_id=row["message_id"],
+                message_type=row["type"],
+                im_type=row["im_type"],
+                message_time=row["message_time"],
+                content_type=row["content_type"],
+                content=row["content"],
+            )
+            for row in rows
+        ]
+        records.reverse()
+        return records
 
     def list_message_windows_by_message_ids(
         self,
@@ -263,3 +380,11 @@ def _normalize_message_time(message_time: datetime) -> datetime:
     if message_time.tzinfo is None:
         return message_time.replace(tzinfo=UTC)
     return message_time.astimezone(UTC)
+
+
+def _apply_time_range_filters(statement, message_time_column, start_time: datetime | None, end_time: datetime | None):
+    if start_time is not None:
+        statement = statement.where(message_time_column >= _normalize_message_time(start_time))
+    if end_time is not None:
+        statement = statement.where(message_time_column <= _normalize_message_time(end_time))
+    return statement

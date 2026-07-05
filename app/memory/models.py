@@ -35,3 +35,25 @@ class ChatSessionInfo:
     latest_reply_time: datetime | None = None
     lease_owner: str | None = None
     lease_until: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ConversationHistoryQuery:
+    """历史消息查询条件。"""
+
+    user_id: str
+    im_type: str
+    chat_id: str
+    text: str
+    start_time: datetime | None = None
+    end_time: datetime | None = None
+    limit: int = 5
+
+
+@dataclass(frozen=True, slots=True)
+class HistorySearchResult:
+    """历史消息命中结果，包含命中来源信息。"""
+
+    record: MemoryRecord
+    matched_by_text: bool
+    matched_by_vector: bool
