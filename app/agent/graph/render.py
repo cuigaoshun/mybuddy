@@ -6,17 +6,12 @@ import sys
 if __package__ in {None, ""}:
     sys.path.append(str(Path(__file__).resolve().parents[3]))
     from app.agent.graph.builder import build_graph
+    from app.memory.service import ConversationMemoryService
+    from app.services.llm import ChatModel
 else:
     from .builder import build_graph
-
-from dependency_injector import providers
-from dotenv import load_dotenv
-
-from app.bootstrap.container import AppContainer
-from app.core.config import init_config
-from app.event.bus import EventBus
-from app.memory.service import ConversationMemoryService
-from app.services.llm import ChatModel
+    from app.memory.service import ConversationMemoryService
+    from app.services.llm import ChatModel
 
 
 def render_graph_png(compiled_graph, output_path: str | Path | None = None) -> bytes:
@@ -48,6 +43,13 @@ def build_and_render_graph_png(
 
 
 if __name__ == "__main__":
+    from dependency_injector import providers
+    from dotenv import load_dotenv
+
+    from app.bootstrap.container import AppContainer
+    from app.core.config import init_config
+    from app.event.bus import EventBus
+
     load_dotenv()
     config = init_config()
 
