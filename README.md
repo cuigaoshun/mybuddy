@@ -1,200 +1,152 @@
 # mybuddy
 
-`mybuddy` 是一个陪伴型 Agent 项目。
+`mybuddy` 是一个陪伴型 Agent 项目，目标不是做一个一次性的聊天 Demo，而是先把“接收消息 → 理解上下文 → 读取记忆 → 生成回复 → 回写消息”这条链路打通，并把后续可持续演进的边界提前定清楚。
 
-项目目标是通过 IM 系统接收用户消息，结合 Agent 编排、RAG 和记忆系统生成回复，再通过 IM 平台 API 把消息发回去。第一期只做飞书接入，先把消息链路、记忆抽象和存储边界定义清楚，不扩展到多平台。
+当前一期只围绕飞书展开：通过飞书 `websocket` 接收消息，通过飞书开放平台 API 发送消息，在中间接入 Agent 编排、记忆检索和 PostgreSQL 存储抽象，形成一个最小可运行闭环。
+
+## 这个项目当前在做什么
+
+当前仓库已经不是纯文档骨架，而是已经落下了一条一期主链路：
+
+1. `app/bootstrap/application.py` 创建 FastAPI 应用，并在生命周期里初始化配置、数据库、向量模型和 Agent Graph。
+2. `app/bootstrap/feishu.py` 装配飞书 `websocket` client，把飞书入站消息订阅到内部事件总线。
+3. `app/gateway/dispatch/feishu.py` 把飞书事件转换成统一的 `IncomingChatMessage`。
+4. `app/router/session_manager.py` 负责一条消息的主流程编排：用户消息入库、会话租约控制、调用 Agent、发送回复、助手消息回写。
+5. `app/agent/` 负责构建对话上下文和 LangGraph 回复流程。
+6. `app/memory/` 负责记忆写入、向量化、历史查询和 PostgreSQL 仓储实现。
+7. `app/services/im_sender/feishu.py` 负责统一的飞书发送封装，不把飞书 SDK 直接暴露给上层。
+
+换句话说，这个项目当前在做的是：先把“陪伴型 Agent 的最小消息闭环”做扎实，而不是同时铺开多平台、多后台或大而全能力。
 
 ## 一期范围
 
-第一期只覆盖以下能力：
+第一期明确只做这些事情：
 
-- 通过飞书 `websocket` 长连接接收消息事件。
-- 通过飞书开放平台 API 发送文本消息。
-- 在 Agent 层处理消息、上下文、短期记忆和长期记忆入口。
-- 所有存储统一走 PostgreSQL，但在代码层必须是可替换的底层抽象，而不是把业务逻辑直接绑死到 PG 实现。
+- 只接入飞书，不扩展到企业微信、钉钉、Telegram、Slack 等其他平台。
+- 用飞书 `websocket` 长连接接收消息事件。
+- 用飞书 API 发送文本消息。
+- 把平台事件尽早转换成项目内部统一消息模型。
+- 通过 Agent、上下文构建、记忆检索生成回复。
+- 使用 PostgreSQL 承担当前存储实现，但业务层只依赖抽象接口。
 
 第一期明确不做：
 
-- 其他 IM 平台接入。
-- 多租户控制台或运营后台。
+- 多平台接入统一网关。
+- 管理后台、运营后台、多租户控制台。
 - 复杂权限系统。
 - 过早拆分微服务。
 
-## 产品目标
+## 当前链路
 
-这个项目的核心不是“聊天机器人 Demo”，而是一个可持续演进的陪伴型 Agent 基础设施。它需要长期支持：
+目前已经成形的核心链路可以概括为：
 
-- 连续对话。
-- 可追溯记忆。
-- 可替换存储。
-- 可扩展的 IM 接入层。
-- 后续接入更复杂的 RAG、画像、关系、主动触达能力。
+1. 飞书用户消息通过 `websocket` 进入系统。
+2. `gateway` 层把飞书原始事件归一化成内部消息模型。
+3. `event` 层把入站消息发布到内部事件总线。
+4. `router` 层接住消息，执行去重、会话租约、记忆写入、回复编排。
+5. `agent` 层基于上下文与记忆生成回复内容。
+6. `services/im_sender` 调飞书 API 发送消息。
+7. 用户消息、助手消息、会话信息等数据通过 `memory` 抽象落到 PostgreSQL。
 
-## 一期核心链路
+## 当前目录职责
 
-一期建议按下面的消息路径组织：
+当前仓库里与一期主链路最相关的目录职责如下：
 
-1. 飞书 `websocket` 接收用户消息事件。
-2. 接入层把飞书事件转换为统一内部消息模型。
-3. 会话层识别用户、会话、消息上下文。
-4. 记忆层读取短期上下文与长期记忆。
-5. Agent 图编排决定回复策略。
-6. 生成回复后调用飞书发送 API 回写消息。
-7. 对话、记忆、事件日志、发送记录统一落 PostgreSQL 抽象存储层。
+- `app/bootstrap/`：应用启动、依赖装配、飞书监听器启动。
+- `app/api/routes/`：当前只包含基础 HTTP 路由，例如健康检查。
+- `app/gateway/`：外部平台事件接入与归一化，目前重点是飞书消息分发。
+- `app/event/`：内部事件模型与事件总线。
+- `app/router/`：消息路由、会话处理、调用编排。
+- `app/agent/`：上下文构建、工具选择、LangGraph 回复流程。
+- `app/memory/`：记忆模型、仓储抽象、PG 仓储实现、向量检索与历史检索。
+- `app/services/`：基础服务封装，目前包括 LLM 与统一 IM 发送。
+- `app/workers/`：预留给异步任务；当前还没有完整落地后台消费逻辑。
 
-## 当前仓库骨架
+仓库里还可以看到一些现状信号：
 
-当前仓库已经有一套一期可继续演进的目录骨架：
+- `app/main.py` 是 FastAPI 入口。
+- `app/api/routes/health.py` 提供了最小健康检查路由。
+- `app/workers/consumer.py` 目前还是空文件，说明后台任务层还是预留状态。
 
-- `app/agent/`：Agent 图与推理编排。
-- `app/api/routes/`：HTTP 路由，例如健康检查、回调入口、WebSocket 相关接口。
-- `app/core/`：配置、日志、安全等基础能力。
-- `app/event/`：事件模型与事件总线。
-- `app/gateway/`：外部平台消息分发与适配入口。
-- `app/memory/`：记忆服务与检索入口。
-- `app/realtime/`：实时连接管理。
-- `app/router/`：会话路由与消息流转控制。
-- `app/services/`：IM 发送、LLM 调用等基础服务。
-- `app/workers/`：后台消费与异步任务。
+## 飞书接入方式
 
-当前已经开始按一期方案落地：
+当前飞书接入方向已经比较明确：
 
-- `app/bootstrap/app.py` 负责应用内部依赖装配。
-- `app/bootstrap/feishu.py` 只负责飞书启动。
-- `app/gateway/dispatch/` 负责飞书消息分发与归一化。
-- `app/services/im_sender/` 负责统一发送能力与发送结果模型。
-- `app/memory/` 负责记忆写入抽象、向量化和 PostgreSQL 实现。
+- 收消息参考 `tests/lark_on_bot.py`，以飞书 `websocket` 模式为主。
+- 发消息参考 `tests/lark_u_to_bot.py`，通过飞书 SDK 调用发送接口。
+- 正式代码里，飞书收消息逻辑收敛在 `app/bootstrap/feishu.py` 和 `app/gateway/dispatch/feishu.py`。
+- 正式代码里，飞书发消息逻辑收敛在 `app/services/im_sender/feishu.py`。
 
-目前很多文件仍是空骨架，所以本阶段先通过文档固定职责边界，后续实现按这些边界填充。
+这意味着后续开发需要继续坚持一个原则：飞书 SDK 调用不要散落到各处业务模块，平台字段要尽早收敛成内部统一模型。
 
-## 飞书接入说明
+## Agent、记忆与 RAG 的位置
 
-`tests` 目录里已经有两个一期最关键的参考示例：
+当前项目里，这几个核心能力的边界已经基本清楚：
 
-- `tests/lark_on_bot.py`：飞书 `websocket` 收消息示例。
-- `tests/lark_u_to_bot.py`：飞书发送消息示例。
+- Agent 放在 `app/agent/`，负责对话上下文构建、图编排和回复生成。
+- 记忆放在 `app/memory/`，负责记忆写入、历史查询、向量召回和结果组织。
+- RAG 在一期里不单独做复杂系统，而是作为记忆检索能力的一部分，先服务于对话上下文拼装。
+- Router 不负责“思考”，而是负责把消息送到正确的会话与 Agent 流程里。
 
-这两个示例定义了一期接入方向：
+一期重点不是把 RAG 做复杂，而是先保证记忆读写、检索入口和回复链路真的能用。
 
-- 收消息优先走飞书长连接模式。
-- 发消息统一封装到发送服务，不把飞书 SDK 调用散落到业务代码里。
-- 飞书事件进入系统后，要尽快转换成项目内部统一消息模型，避免后续业务逻辑直接依赖飞书字段结构。
+## 存储为什么要先抽象
 
-## 存储设计原则
+虽然当前实现先使用 PostgreSQL，但代码设计上仍然要求上层只依赖抽象，而不是直接依赖 PG 细节。
 
-虽然第一期所有存储都落 PostgreSQL，但代码设计上必须把“接口”和“实现”分开。
+当前仓库已经体现出这个方向：
 
-建议把存储拆成两层：
+- `app/memory/repositories.py` 定义了记忆仓储与会话信息仓储协议。
+- `app/memory/postgres_repository.py` 提供对话记忆的 PostgreSQL 实现。
+- `app/memory/postgres_session_info_repository.py` 提供会话信息的 PostgreSQL 实现。
 
-- 仓储接口层：定义会话、消息、记忆、事件日志、发送记录等能力。
-- PG 实现层：负责 SQL、事务、索引和持久化细节。
+这样做的原因很简单：陪伴型 Agent 的长期演进里，存储方案很可能变化。消息历史、长期记忆、向量检索、发送记录未来都可能拆开演化；如果业务逻辑一开始就写死在 SQL 和 PG 结构上，后面会非常难改。
 
-当前对话记忆最小实现使用：
+## 当前已使用的 PostgreSQL 设计
 
-- 表：`chat_memory`
+当前最小记忆实现围绕以下对象展开：
+
+- 记忆表：`chat_memory`
 - 会话信息表：`chat_session_info`
-- 主键：`GENERATED ALWAYS AS IDENTITY`
-- 时间字段：`message_time TIMESTAMPTZ`
-- 内容类型字段：`content_type`
-- 内容字段：`content JSONB`
-- 普通索引：`(user_id, im_type, message_time)`，用于按当前用户在当前平台的最近会话时间线读取消息
-- 去重索引：`(im_type, message_id, type)`
-- 向量索引：`HNSW`
-- 会话信息唯一索引：`(user_id, im_type, chat_id)`
-- 会话信息字段：`first_reply_time`、`latest_reply_time`、`reply_lease_owner`、`reply_lease_until`
+- 消息内容：`content JSONB`
+- 向量字段：`content_vector`
+- 记忆检索：同时支持最近消息、全文检索、向量检索、按时间范围查询
 
-初始化 SQL 统一放在：
+初始化脚本位于：
 
 - `scripts/init_chat_memory.sql`
-- 如果库里已有旧的 `userid` 列，再执行 `scripts/migrate_chat_memory_userid_to_user_id.sql`
+- `scripts/migrate_chat_memory_userid_to_user_id.sql`
 
-执行方式：
+当前代码默认使用 `public.chat_memory` 等表结构，数据库初始化通过手动执行 SQL 脚本完成，代码本身不负责自动建表。
 
-- 先手动连接目标 PostgreSQL 数据库。
-- 再手动执行 `scripts/init_chat_memory.sql`。
-- 代码层不再负责建扩展、建表和建索引。
-- 当前代码与脚本都固定使用 `public.chat_memory`。
+## 本地运行
 
-这样做的目的是保证后续可以替换为别的实现，例如：
+应用入口是：
 
-- 关系型数据库的不同实现。
-- 向量检索组件。
-- 文件或对象存储。
-- 缓存层。
+- `app/main.py`
 
-业务层只依赖抽象，不直接依赖具体数据库细节。
-
-## 记忆与 RAG 边界
-
-一期里的 RAG 和记忆系统建议先聚焦在最小可用闭环：
-
-- 会话短期记忆：最近若干轮消息。
-- 用户长期记忆：经过筛选后可沉淀的事实、偏好、关系线索。
-- 检索入口统一由 `app/memory/` 暴露。
-- Agent 层只消费结构化记忆结果，不关心底层是纯 PG、PG + 向量扩展，还是未来替换成别的检索实现。
-
-第一期不追求复杂召回策略，先保证消息、会话、记忆沉淀和回复链路打通。
-
-## 一期建议的模块职责
-
-为了避免后续实现混乱，建议职责保持如下边界：
-
-- `app/gateway/`：负责飞书事件接入和平台适配。
-- `app/router/`：负责会话识别、消息路由、调用顺序。
-- `app/agent/`：负责编排节点、状态流转、回复决策。
-- `app/memory/`：负责记忆写入、检索、摘要与召回入口。
-- `app/services/im_sender.py`：负责统一发送消息，不暴露飞书 SDK 细节给上层。
-- `app/event/`：负责内部事件模型和广播机制。
-- `app/workers/`：负责异步化任务，例如记忆整理、摘要沉淀、补偿发送。
-
-## 开发优先级
-
-建议一期按下面顺序推进：
-
-1. 定义统一消息模型、会话模型、发送模型。
-2. 完成飞书 `websocket` 接收适配。
-3. 完成飞书发送服务封装。
-4. 打通消息路由到 Agent 图的最小闭环。
-5. 落地 PG 抽象仓储接口和首个 PG 实现。
-6. 接入最小记忆读写流程。
-7. 最后再补后台任务和观测能力。
-
-## 本地参考
-
-当前依赖显示本项目使用：
-
-- `FastAPI`
-- `LangGraph`
-- `LangChain`
-- `lark-oapi`
-- `Pydantic`
-
-可以先参考现有示例文件理解飞书接入方式，再按本 README 约束补全正式实现。
-
-## Docker 运行
-
-当前仓库提供了一个仅包含运行环境的 `Dockerfile`，业务代码不打进镜像，而是通过 `docker-compose.yml` 挂载本地代码目录运行。
-
-打镜像命令：
-
-- `docker build -t mybuddy .`
-
-导出镜像命令：
-
-- `docker save -o myimage.tar mybuddy`
-
-导入镜像命令：
-
-- `docker load -i myimage.tar`
-
-使用 compose 启动命令：
-
-- `docker compose up`
-
-当前 `docker-compose.yml` 会把代码目录挂载为：
-
-- `/home/Project/mybuddy:/workspace`
-
-容器启动后会运行：
+本地开发常见启动方式：
 
 - `uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload`
+
+如果使用容器：
+
+- `docker build -t mybuddy .`
+- `docker compose up`
+
+当前 `docker-compose.yml` 的思路是提供运行环境，并把本地代码挂载到容器里运行，而不是把业务代码直接打进镜像。
+
+## 参考文件
+
+如果要继续理解或扩展一期主链路，优先看这些文件：
+
+- `app/bootstrap/application.py`
+- `app/bootstrap/container.py`
+- `app/bootstrap/feishu.py`
+- `app/gateway/dispatch/feishu.py`
+- `app/router/session_manager.py`
+- `app/memory/repositories.py`
+- `app/memory/postgres_repository.py`
+- `app/services/im_sender/feishu.py`
+- `tests/lark_on_bot.py`
+- `tests/lark_u_to_bot.py`
