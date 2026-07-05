@@ -4,11 +4,13 @@ from dataclasses import replace
 
 from app.agent.context.models import ContextBundle, ContextEvidenceBlock, ContextSessionSnapshot
 from app.agent.context.system_prompt import SYSTEM_PROMPT
-from app.agent.context.tools.prompts import build_tool_category_prompt, build_tool_selector_prompt
+from app.agent.context.tools.models import SelectToolCategoryInput, ToolCategoryName
+from app.agent.context.tools.prompts import build_selected_category_prompt, build_tool_category_prompt, build_tool_selector_prompt
 from app.agent.context.tools.registry import ToolRegistry
 from app.event.models import IncomingChatMessage
 from app.memory.models import ChatSessionInfo, HistorySearchResult, MemoryRecord
 from app.memory.service import ConversationMemoryService
+from langchain_core.tools import tool
 
 
 class ConversationContextBuilder:
@@ -69,9 +71,37 @@ class ConversationContextBuilder:
         )
         return replace(bundle, tool_evidence_blocks=tool_evidence_blocks)
 
+    def select_tool_category(self, bundle: ContextBundle, category_name: ToolCategoryName) -> ContextBundle:
+        # 选定大类后，第二阶段只保留该大类的小工具说明，避免继续携带全量 schema。
+        category = self._tool_registry.get_category(category_name)
+        if category is None:
+            return bundle
+        category_tool_specs = self._tool_registry.list_tool_specs_by_category(category_name)
+        return replace(
+            bundle,
+            selected_tool_category=category_name,
+            tool_selector_prompt=None,
+            tool_category_prompt=build_selected_category_prompt(category, category_tool_specs),
+            enabled_tool_categories=(category,),
+            enabled_tool_specs=category_tool_specs,
+        )
+
     def list_langchain_tools(self) -> list[object]:
         # 图层只拿到真正可绑定给模型的小工具对象，不关心注册细节。
         return self._tool_registry.list_langchain_tools()
+
+    def list_langchain_tools_by_category(self, category_name: ToolCategoryName) -> list[object]:
+        return self._tool_registry.list_langchain_tools_by_category(category_name)
+
+    def build_category_selector_tool(self) -> object:
+        category_names = ", ".join(category.name for category in self._tool_registry.list_tool_categories())
+
+        @tool("select_tool_category", args_schema=SelectToolCategoryInput)
+        def select_tool_category_tool(category_name: str) -> str:
+            """当你判断需要使用工具时，先选择最匹配的工具大类。可选大类："""
+            return f"请通过工具调用选择工具大类。当前可选大类：{category_names}。你必须传入 category_name。"
+
+        return select_tool_category_tool
 
     def get_tool_registry(self) -> ToolRegistry:
         return self._tool_registry

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
-from app.agent.context.tools.models import ToolCategory, ToolSpec
+from app.agent.context.tools.models import ToolCategory, ToolCategoryName, ToolSpec
 from app.event.models import IncomingChatMessage
 from app.memory.models import MemoryRecord
 
@@ -43,4 +43,5 @@ class ContextBundle:
     evidence_blocks: tuple[ContextEvidenceBlock, ...]
     enabled_tool_categories: tuple[ToolCategory, ...]
     enabled_tool_specs: tuple[ToolSpec, ...]
+    selected_tool_category: ToolCategoryName | None = None
     tool_evidence_blocks: tuple[ContextEvidenceBlock, ...] = ()

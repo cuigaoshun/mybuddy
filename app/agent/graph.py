@@ -13,8 +13,8 @@ from app.agent.context.budget import ContextMessageBudgeter
 from app.agent.context.formatter import ConversationContextFormatter
 from app.agent.context.models import ContextBundle
 from app.agent.context.tools import ToolExecutor
-from app.agent.context.tools.models import ToolCallContext
-from app.agent.util import extract_reply_text, messages_to_jsonable
+from app.agent.context.tools.models import ToolCallContext, ToolCategoryName
+from app.agent.util import extract_reply_text, messages_to_jsonable, tool_specs_to_jsonable
 from app.event.models import IncomingChatMessage
 from app.memory.models import ChatSessionInfo
 from app.memory.service import ConversationMemoryService
@@ -29,6 +29,7 @@ class ReplyState(BaseModel):
     context_bundle: ContextBundle
     reply_text: str | None = None
     messages: tuple[BaseMessage, ...] = ()
+    selected_tool_category: ToolCategoryName | None = None
 
 
 def build_graph(chat_model: ChatModel, conversation_memory_service: ConversationMemoryService):
@@ -37,19 +38,51 @@ def build_graph(chat_model: ChatModel, conversation_memory_service: Conversation
     context_formatter = ConversationContextFormatter()
     context_budgeter = ContextMessageBudgeter(chat_model)
     tool_executor = ToolExecutor(context_builder.get_tool_registry())
-
-    tool_enabled_chat_model = chat_model.bind_tools(context_builder.list_langchain_tools())
+    category_selector_tool = context_builder.build_category_selector_tool()
+    category_selector_model = chat_model.bind_tools([category_selector_tool])
 
     def input_node(state: ReplyState) -> ReplyState:
         # 每轮进入模型前，都从最新的上下文包重新生成并裁剪 messages。
         messages = context_budgeter.trim_messages(context_formatter.format(state.context_bundle))
         return state.model_copy(update={"messages": messages})
 
-    def reply_node(state: ReplyState) -> ReplyState:
-        # 记录最终送模的 messages，方便后续排查上下文装配问题。
+    def select_category_node(state: ReplyState) -> ReplyState:
+        # 第一阶段只绑定 selector tool，让模型先决定是否需要工具和选哪个大类。
         messages = list(state.messages)
+        logger.info(
+            "当前绑定工具 schema:\n{}",
+            json.dumps(tool_specs_to_jsonable(state.context_bundle.enabled_tool_specs), ensure_ascii=False, indent=2),
+        )
         logger.info("请求模型提示词:\n{}", json.dumps(messages_to_jsonable(messages), ensure_ascii=False, indent=2))
-        reply = tool_enabled_chat_model.invoke(messages)
+        reply = category_selector_model.invoke(messages)
+        updated_messages = tuple([*messages, reply])
+        selected_category = _extract_selected_category(reply)
+        if selected_category is None:
+            return state.model_copy(update={"messages": updated_messages})
+        next_bundle = context_builder.select_tool_category(state.context_bundle, selected_category)
+        return state.model_copy(
+            update={
+                "messages": updated_messages,
+                "context_bundle": next_bundle,
+                "selected_tool_category": selected_category,
+            }
+        )
+
+    def reply_node(state: ReplyState) -> ReplyState:
+        # 第二阶段根据是否已选 category，决定是直接回答还是动态绑定该类小工具。
+        messages = list(state.messages)
+        logger.info(
+            "当前绑定工具 schema:\n{}",
+            json.dumps(tool_specs_to_jsonable(state.context_bundle.enabled_tool_specs), ensure_ascii=False, indent=2),
+        )
+        logger.info("请求模型提示词:\n{}", json.dumps(messages_to_jsonable(messages), ensure_ascii=False, indent=2))
+        if state.selected_tool_category is None:
+            reply = chat_model.invoke(messages)
+        else:
+            category_tool_model = chat_model.bind_tools(
+                context_builder.list_langchain_tools_by_category(state.selected_tool_category)
+            )
+            reply = category_tool_model.invoke(messages)
         updated_messages = tuple([*messages, reply])
         if getattr(reply, "tool_calls", None):
             return state.model_copy(update={"messages": updated_messages})
@@ -100,6 +133,9 @@ def build_graph(chat_model: ChatModel, conversation_memory_service: Conversation
             }
         )
 
+    def route_after_select_category(state: ReplyState) -> Literal["reply"]:
+        return "reply"
+
     def route(state: ReplyState) -> Literal["tool", "end"]:
         # 只有模型真的发起工具调用时，才进入工具节点继续补证据。
         if state.messages and isinstance(state.messages[-1], AIMessage) and getattr(state.messages[-1], "tool_calls", None):
@@ -108,10 +144,12 @@ def build_graph(chat_model: ChatModel, conversation_memory_service: Conversation
 
     graph = StateGraph(ReplyState)
     graph.add_node("input", input_node)
+    graph.add_node("select_category", select_category_node)
     graph.add_node("reply", reply_node)
     graph.add_node("tool", tool_node)
     graph.add_edge(START, "input")
-    graph.add_edge("input", "reply")
+    graph.add_edge("input", "select_category")
+    graph.add_conditional_edges("select_category", route_after_select_category, {"reply": "reply"})
     graph.add_conditional_edges("reply", route, {"tool": "tool", "end": END})
     graph.add_edge("tool", "reply")
     return graph.compile()
@@ -134,6 +172,21 @@ class GraphChatAgent:
                 message=message,
                 session_info=session_info,
                 context_bundle=context_bundle,
+                selected_tool_category=None,
             )
         )
         return result.get("reply_text")
+
+
+def _extract_selected_category(reply: AIMessage) -> ToolCategoryName | None:
+    # 第一阶段只关心 selector tool 是否返回了合法的大类选择。
+    for tool_call in getattr(reply, "tool_calls", []) or []:
+        if tool_call.get("name") != "select_tool_category":
+            continue
+        tool_args = tool_call.get("args")
+        if not isinstance(tool_args, dict):
+            continue
+        category_name = tool_args.get("category_name")
+        if category_name in {"history_tools", "memory_tools"}:
+            return category_name
+    return None

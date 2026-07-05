@@ -39,3 +39,14 @@ def build_tool_category_prompt(categories: tuple[ToolCategory, ...], tools: tupl
         for tool_spec in tool_specs_by_category.get(category.name, []):
             lines.append(f"   - 小工具 `{tool_spec.name}`：{tool_spec.prompt_hint}")
     return "\n".join(lines)
+
+
+def build_selected_category_prompt(category: ToolCategory, tools: tuple[ToolSpec, ...]) -> str:
+    lines = [
+        f"你已经决定使用工具大类 `{category.name}`（{category.title}）。",
+        "现在只允许你在这个大类下选择具体小工具，不要再考虑其他大类。",
+        "当前可用小工具：",
+    ]
+    for index, tool_spec in enumerate(tools, start=1):
+        lines.append(f"{index}. `{tool_spec.name}`：{tool_spec.prompt_hint}")
+    return "\n".join(lines)

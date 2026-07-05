@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-EMBEDDING_MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+EMBEDDING_MODEL_NAME = "BAAI/bge-base-zh-v1.5"
 
 
 class EmbeddingProvider(Protocol):
@@ -13,7 +13,7 @@ class EmbeddingProvider(Protocol):
 class SentenceTransformerEmbeddingProvider:
     def __init__(self, model_name: str = EMBEDDING_MODEL_NAME) -> None:
         from sentence_transformers import SentenceTransformer
-        self._model =  SentenceTransformer("./model/mpml12")
+        self._model =  SentenceTransformer("./model/baai")
 
     def embed_text(self, text: str) -> list[float]:
         embedding = self._model.encode(text, normalize_embeddings=True)

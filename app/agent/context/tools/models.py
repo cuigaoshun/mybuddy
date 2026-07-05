@@ -42,6 +42,12 @@ class ToolExecutionResult:
 
 
 @dataclass(frozen=True, slots=True)
+class CategorySelectionResult:
+    selected_category_name: ToolCategoryName | None
+    should_use_tool: bool
+
+
+@dataclass(frozen=True, slots=True)
 class ToolDefinition:
     spec: ToolSpec
     execute: Callable[[dict[str, object], ToolCallContext, str], ToolExecutionResult]
@@ -51,6 +57,10 @@ class SearchHistoryToolInput(BaseModel):
     text: str = Field(default="", description="要查询的历史话题、关键词或句子。")
     start_time: str | None = Field(default=None, description="开始时间，ISO 8601 字符串，例如 2026-07-01T00:00:00+08:00。")
     end_time: str | None = Field(default=None, description="结束时间，ISO 8601 字符串，例如 2026-07-05T23:59:59+08:00。")
+
+
+class SelectToolCategoryInput(BaseModel):
+    category_name: ToolCategoryName = Field(description="选中的工具大类名称。")
 
 
 def parse_tool_datetime(value: str | None) -> datetime | None:
