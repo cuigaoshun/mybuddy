@@ -7,14 +7,14 @@ from langchain_core.messages import AIMessage
 from .state import ReplyState
 
 
-def route_after_select_category(state: ReplyState) -> Literal["input", "reply", "end"]:
-    """selector 阶段后根据状态决定重走 input、普通回复或直接结束。"""
+def route_after_select_category(state: ReplyState) -> Literal["refresh_messages", "reply", "end"]:
+    """selector 阶段后根据状态决定刷新消息、普通回复或直接结束。"""
 
     if state.reply_text is not None:
         return "end"
     if state.selected_tool_category is None:
         return "reply"
-    return "input"
+    return "refresh_messages"
 
 
 def route_after_reply(state: ReplyState) -> Literal["tool", "end"]:

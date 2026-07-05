@@ -9,7 +9,7 @@ from app.agent.context.tools import ToolExecutor
 from app.memory.service import ConversationMemoryService
 from app.services.llm import ChatModel
 
-from .nodes.input import input_node
+from .nodes.input import input_node, refresh_messages_node
 from .nodes.reply import reply_node
 from .nodes.selector import select_category_node
 from .nodes.tool import tool_node
@@ -35,6 +35,15 @@ def build_graph(chat_model: ChatModel, conversation_memory_service: Conversation
     graph.add_node(
         "input",
         lambda state: input_node(
+            state=state,
+            context_formatter=context_formatter,
+            context_budgeter=context_budgeter,
+        ),
+    )
+    # 刷新消息节点：选定工具大类后，仅基于新 bundle 重建第二阶段消息，不再重复 selector。
+    graph.add_node(
+        "refresh_messages",
+        lambda state: refresh_messages_node(
             state=state,
             context_formatter=context_formatter,
             context_budgeter=context_budgeter,
@@ -70,7 +79,8 @@ def build_graph(chat_model: ChatModel, conversation_memory_service: Conversation
     # 整体流程：START -> input -> select_category -> reply -> (tool -> reply)* -> END。
     graph.add_edge(START, "input")
     graph.add_edge("input", "select_category")
-    graph.add_conditional_edges("select_category", route_after_select_category, {"input": "input", "reply": "reply", "end": END})
+    graph.add_conditional_edges("select_category", route_after_select_category, {"refresh_messages": "refresh_messages", "reply": "reply", "end": END})
+    graph.add_edge("refresh_messages", "reply")
     graph.add_conditional_edges("reply", route_after_reply, {"tool": "tool", "end": END})
     graph.add_edge("tool", "reply")
     return graph.compile()
