@@ -3,8 +3,9 @@ from __future__ import annotations
 from loguru import logger
 
 from app.agent.context.builder import ConversationContextBuilder
-from app.agent.util import extract_reply_text, format_messages_for_log
+from app.agent.util import extract_reply_text
 
+from ...helpers import invoke_model
 from ...state import ReplyState
 
 
@@ -24,28 +25,26 @@ def reply_node(
         len(messages),
     )
     if state.selected_tool_category is None:
-        logger.info("当前绑定工具: []")
+        bound_tools_summary = "[]"
     else:
-        logger.info(
-            "当前绑定工具({}): {}",
-            state.selected_tool_category,
-            [tool_spec.name for tool_spec in state.context_bundle.enabled_tool_specs],
-        )
-    logger.info("请求模型提示词:\n{}", format_messages_for_log(messages))
+        bound_tools_summary = f"{state.selected_tool_category}: {[tool_spec.name for tool_spec in state.context_bundle.enabled_tool_specs]}"
     if state.selected_tool_category is None:
         # 没有选中任何工具大类时，走普通聊天模型直答。
-        reply = chat_model.invoke(messages)
+        reply = invoke_model(
+            model=chat_model,
+            messages=messages,
+            bound_tools_summary=bound_tools_summary,
+        )
     else:
         # 只按选中的大类动态绑定对应小工具，减少无关 schema 进入上下文。
         category_tool_model = chat_model.bind_tools(
             context_builder.list_langchain_tools_by_category(state.selected_tool_category)
         )
-        reply = category_tool_model.invoke(messages)
-    logger.info(
-        "模型回复: text={} tool_calls={}",
-        extract_reply_text(reply),
-        getattr(reply, "tool_calls", []),
-    )
+        reply = invoke_model(
+            model=category_tool_model,
+            messages=messages,
+            bound_tools_summary=bound_tools_summary,
+        )
     updated_messages = tuple([*messages, reply])
     if getattr(reply, "tool_calls", None):
         # 一旦模型发起工具调用，就把 AIMessage 保留给工具节点继续处理。

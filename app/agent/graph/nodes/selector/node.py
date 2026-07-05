@@ -3,9 +3,8 @@ from __future__ import annotations
 from loguru import logger
 
 from app.agent.context.builder import ConversationContextBuilder
-from app.agent.util import extract_reply_text, format_messages_for_log
 
-from ...helpers import extract_selected_category, extract_selector_reply_text
+from ...helpers import extract_selected_category, extract_selector_reply_text, invoke_model
 from ...state import ReplyState
 
 
@@ -24,14 +23,11 @@ def select_category_node(
         len(messages),
         state.selected_tool_category,
     )
-    logger.info("当前绑定工具: [select_tool_category]")
-    logger.info("请求模型提示词:\n{}", format_messages_for_log(messages))
     # 这一轮调用只允许模型产出 category 选择，不暴露业务小工具 schema。
-    reply = category_selector_model.invoke(messages)
-    logger.info(
-        "模型回复: text={} tool_calls={}",
-        extract_reply_text(reply),
-        getattr(reply, "tool_calls", []),
+    reply = invoke_model(
+        model=category_selector_model,
+        messages=messages,
+        bound_tools_summary="[select_tool_category]",
     )
     updated_messages = tuple([*messages, reply])
     selected_category = extract_selected_category(reply)

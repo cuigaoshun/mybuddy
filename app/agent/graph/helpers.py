@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from loguru import logger
 from langchain_core.messages import AIMessage
 
 from app.agent.context.tools.models import ToolCategoryName
-from app.agent.util import extract_reply_text
+from app.agent.util import extract_reply_text, format_messages_for_log
 
 
 def extract_selected_category(reply: AIMessage) -> ToolCategoryName | None:
@@ -34,3 +35,17 @@ def extract_selector_reply_text(reply: AIMessage) -> str | None:
     if not reply_text:
         return None
     return reply_text
+
+
+def invoke_model(model, messages: list, bound_tools_summary: str) -> AIMessage:
+    """统一封装模型调用日志：调用前打提示词和工具摘要，调用后打回复。"""
+
+    logger.info("当前绑定工具: {}", bound_tools_summary)
+    logger.info("请求模型提示词:\n{}", format_messages_for_log(messages))
+    reply = model.invoke(messages)
+    logger.info(
+        "模型回复: text={} tool_calls={}",
+        extract_reply_text(reply),
+        getattr(reply, "tool_calls", []),
+    )
+    return reply
