@@ -3,6 +3,7 @@ from __future__ import annotations
 from loguru import logger
 from app.agent.context.tools.selector import build_category_selector_tool
 from langchain_core.messages import AIMessage
+from app.agent.util import extract_reply_text
 
 from app.agent.graph.runtime import GraphRuntimeContext
 
@@ -31,10 +32,24 @@ def tool_selector_node(state: ReplyState, context: GraphRuntimeContext) -> Reply
                 "selector_requires_tool_execution": True,
             }
         )
+    direct_reply_text = _extract_direct_reply_text(reply)
+    if direct_reply_text is not None:
+        logger.info("tool_selector 已直接产出最终回复，结束当前轮")
+        return state.model_copy(
+            update={
+                "messages": updated_messages,
+                "final_reply": direct_reply_text,
+                "selected_tool_categories": (),
+                "selected_tool_names": (),
+                "selector_confidence": 1.0,
+                "selector_requires_tool_execution": False,
+            }
+        )
     if selected_category is None:
         logger.info("tool_selector 未选择工具大类，当前轮按直答继续")
         return state.model_copy(
             update={
+                "messages": updated_messages,
                 "selected_tool_categories": (),
                 "selected_tool_names": (),
                 "selector_confidence": 0.4,
@@ -60,3 +75,12 @@ def _has_non_selector_tool_call(reply: AIMessage) -> bool:
         if isinstance(tool_name, str) and tool_name != "select_tool_category":
             return True
     return False
+
+
+def _extract_direct_reply_text(reply: AIMessage) -> str | None:
+    if getattr(reply, "tool_calls", None):
+        return None
+    reply_text = extract_reply_text(reply).strip()
+    if reply_text == "":
+        return None
+    return reply_text

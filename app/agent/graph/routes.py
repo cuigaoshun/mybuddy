@@ -5,7 +5,9 @@ from typing import Literal
 from .state import ReplyState
 
 
-def route_after_tool_selector(state: ReplyState) -> Literal["tool_expansion", "tool_executor"]:
+def route_after_tool_selector(state: ReplyState) -> Literal["tool_expansion", "tool_executor", "end"]:
+    if state.final_reply is not None:
+        return "end"
     if state.selector_requires_tool_execution:
         return "tool_executor"
     return "tool_expansion"

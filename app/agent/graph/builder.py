@@ -87,7 +87,7 @@ def build_graph(
     graph.add_edge("load_state", "load_memory")
     graph.add_edge("load_memory", "rewrite")
     graph.add_edge("rewrite", "tool_selector")
-    graph.add_conditional_edges("tool_selector", route_after_tool_selector, {"tool_expansion": "tool_expansion", "tool_executor": "tool_executor"})
+    graph.add_conditional_edges("tool_selector", route_after_tool_selector, {"tool_expansion": "tool_expansion", "tool_executor": "tool_executor", "end": END})
     graph.add_edge("tool_expansion", "chat_model")
     graph.add_edge("chat_model", "decision")
     graph.add_edge("tool_executor", "context_update")

@@ -40,8 +40,7 @@ def has_non_selector_tool_call(reply: AIMessage) -> bool:
 def invoke_model(model, messages: list[BaseMessage], bound_tool_names: tuple[str, ...] = ()) -> AIMessage:
     """统一封装模型调用并记录日志。"""
 
-    logger.info("当前 bind_tools: {}", list(bound_tool_names))
-    logger.info("请求模型提示词:\n{}", format_messages_for_log(messages))
+    logger.info("当前 bind_tools: {}\n请求模型提示词:\n{}", list(bound_tool_names), format_messages_for_log(messages))
     reply = model.invoke(messages)
     logger.info(
         "模型回复: text={} tool_calls={}",
