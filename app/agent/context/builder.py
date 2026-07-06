@@ -2,14 +2,9 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from langchain_core.tools import BaseTool
-
 from app.agent.context.models import ContextBundle, ContextEvidenceBlock, ContextEvidenceSource, ContextSessionSnapshot, ToolContextBlock
 from app.agent.context.system_prompt import SYSTEM_PROMPT
-from app.agent.context.tools.models import ToolCategoryName
-from app.agent.context.tools.prompts import build_tool_selector_description
 from app.agent.context.tools.registry import ToolRegistry
-from app.agent.context.tools.selector import build_category_selector_tool
 from app.event.models import IncomingChatMessage
 from app.memory.models import ChatSessionInfo, HistorySearchResult, MemoryRecord
 from app.memory.service import ConversationMemoryService
@@ -53,17 +48,12 @@ class ConversationContextBuilder:
         evidence_blocks = self._deduplicate_evidence(
             self._convert_memory_records_to_evidence(similar_records, source="similar_recall", recent_records=recent_records)
         )
-        # 首轮只暴露工具大类，不提前暴露任何子工具信息。
-        enabled_tool_categories = self._tool_registry.list_tool_categories()
         return ContextBundle(
             system_prompt=SYSTEM_PROMPT,
-            tool_category_prompt=None,
             current_message=message,
             session_snapshot=self._build_session_snapshot(message, session_info),
             recent_records=recent_records,
             evidence_blocks=evidence_blocks,
-            enabled_tool_categories=enabled_tool_categories,
-            enabled_tool_specs=(),
         )
 
     def append_tool_results(self, bundle: ContextBundle, results: tuple[HistorySearchResult, ...]) -> ContextBundle:
@@ -87,33 +77,6 @@ class ConversationContextBuilder:
             ]
         )
         return replace(bundle, tool_context_blocks=tool_context_blocks)
-
-    def select_tool_category(self, bundle: ContextBundle, category_name: ToolCategoryName) -> ContextBundle:
-        # 选定大类后，第二阶段只保留该大类的小工具 schema，不再保留首轮 selector prompt。
-        category = self._tool_registry.get_category(category_name)
-        if category is None:
-            return bundle
-        category_tool_specs = self._tool_registry.list_tool_specs_by_category(category_name)
-        return replace(
-            bundle,
-            selected_tool_category=category_name,
-            tool_category_prompt=f"你已经决定使用工具大类 `{category.name}`（{category.title}）。现在只允许你在这个大类下选择具体小工具，不要再考虑其他大类。",
-            enabled_tool_categories=(category,),
-            enabled_tool_specs=category_tool_specs,
-        )
-
-    def list_langchain_tools(self) -> list[BaseTool]:
-        # 图层只拿到真正可绑定给模型的小工具对象，不关心注册细节。
-        return self._tool_registry.list_langchain_tools()
-
-    def list_langchain_tools_by_category(self, category_name: ToolCategoryName) -> list[BaseTool]:
-        return self._tool_registry.list_langchain_tools_by_category(category_name)
-
-    def list_entry_langchain_tools(self) -> list[BaseTool]:
-        return self.list_langchain_tools_by_category("web_search_tools")
-
-    def build_category_selector_tool(self) -> BaseTool:
-        return build_category_selector_tool(self._tool_registry.list_tool_categories())
 
     def get_tool_registry(self) -> ToolRegistry:
         return self._tool_registry

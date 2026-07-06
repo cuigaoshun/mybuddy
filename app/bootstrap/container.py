@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dependency_injector import containers, providers
 
-from app.agent.context.builder import ConversationContextBuilder
 from app.agent.graph.agent import GraphChatAgent
 from app.agent.graph.builder import build_graph
 from app.agent.graph.runtime import LLMProvider
@@ -85,18 +84,10 @@ class AppContainer(containers.DeclarativeContainer):
         web_search_service=web_search_service,
     )
 
-    # 上下文构建器，统一管理系统提示词、召回证据和消息预算。
-    context_builder = providers.Singleton(
-        ConversationContextBuilder,
-        conversation_memory_service=conversation_memory_service,
-        web_search_service=web_search_service,
-    )
-
-    # 聊天 Agent，负责读取最近记忆并调用图。
+    # 聊天 Agent，负责把消息送进图并拿回最终回复。
     chat_agent = providers.Singleton(
         GraphChatAgent,
         compiled_graph=agent_graph,
-        context_builder=context_builder,
     )
 
     # 飞书消息发送器。

@@ -30,10 +30,6 @@ class ConversationContextFormatter:
     def _build_system_message(self, bundle: ContextBundle) -> SystemMessage:
         # 把固定系统提示和轻量会话摘要合并成稳定的系统前缀。
         lines = [bundle.system_prompt.strip()]
-        if bundle.tool_category_prompt:
-            # 工具说明按大类动态拼进系统层，兼顾稳定前缀和可扩展性。
-            lines.append("")
-            lines.append(bundle.tool_category_prompt)
         lines.append("当前会话信息：")
         lines.append(f"- 平台：{bundle.session_snapshot.im_type}")
         lines.append(f"- 会话类型：{bundle.session_snapshot.chat_type}")

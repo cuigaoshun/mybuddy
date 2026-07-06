@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
-from app.agent.context.tools.models import ToolCategory, ToolCategoryName, ToolSpec
 from app.event.models import IncomingChatMessage
 from app.memory.models import MemoryRecord
 
@@ -41,13 +40,9 @@ class ContextSessionSnapshot:
 @dataclass(frozen=True, slots=True)
 class ContextBundle:
     system_prompt: str
-    tool_category_prompt: str | None
     current_message: IncomingChatMessage
     session_snapshot: ContextSessionSnapshot
     recent_records: tuple[MemoryRecord, ...]
     evidence_blocks: tuple[ContextEvidenceBlock, ...]
-    enabled_tool_categories: tuple[ToolCategory, ...]
-    enabled_tool_specs: tuple[ToolSpec, ...]
-    selected_tool_category: ToolCategoryName | None = None
     tool_evidence_blocks: tuple[ContextEvidenceBlock, ...] = ()
     tool_context_blocks: tuple[ToolContextBlock, ...] = ()

@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable
 
 from app.agent.context.builder import ConversationContextBuilder
 from app.agent.context.budget import ContextMessageBudgeter
 from app.agent.context.formatter import ConversationContextFormatter
 from app.agent.context.tools import ToolExecutor
-from app.agent.graph.state import ReplyState
+from app.agent.context.tools.registry import ToolRegistry
 from app.services.llm import ChatModel
 
 
@@ -29,6 +28,5 @@ class GraphRuntimeContext:
     context_builder: ConversationContextBuilder
     context_formatter: ConversationContextFormatter
     context_budgeter: ContextMessageBudgeter
+    tool_registry: ToolRegistry
     tool_executor: ToolExecutor
-    selector_model_resolver: Callable[[ReplyState, "GraphRuntimeContext"], ChatModel]
-    reply_model_resolver: Callable[[ReplyState, "GraphRuntimeContext"], tuple[ChatModel, str]]

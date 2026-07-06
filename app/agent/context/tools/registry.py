@@ -22,6 +22,24 @@ class ToolRegistry:
             web_search_definition.spec.name: web_search_definition,
         }
 
+    def list_core_tool_specs(self) -> tuple[ToolSpec, ...]:
+        return tuple(
+            definition.spec
+            for definition in self._tool_definitions.values()
+            if definition.spec.category.name == "web_search_tools"
+        )
+
+    def list_core_langchain_tools(self) -> list[BaseTool]:
+        return [tool_spec.tool for tool_spec in self.list_core_tool_specs()]
+
+    def list_non_core_categories(self) -> tuple[ToolCategory, ...]:
+        categories: dict[str, ToolCategory] = {}
+        for definition in self._tool_definitions.values():
+            if definition.spec.category.name == "web_search_tools":
+                continue
+            categories[definition.spec.category.name] = definition.spec.category
+        return tuple(categories.values())
+
     def list_tool_categories(self) -> tuple[ToolCategory, ...]:
         categories: dict[str, ToolCategory] = {}
         for definition in self._tool_definitions.values():

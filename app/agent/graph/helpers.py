@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from loguru import logger
-from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 
 from app.agent.context.tools.models import ToolCategoryName
-from app.agent.util import extract_reply_text, format_messages_for_log
+from app.agent.util import format_messages_for_log
+
+from .runtime import GraphRuntimeContext
+from .state import ReplyState
 
 
 def extract_selected_category(reply: AIMessage) -> ToolCategoryName | None:
@@ -26,18 +29,7 @@ def extract_selected_category(reply: AIMessage) -> ToolCategoryName | None:
     return None
 
 
-def extract_selector_reply_text(reply: AIMessage) -> str | None:
-    """从 selector 阶段回复里提取可直接结束流程的最终文本。"""
-
-    if getattr(reply, "tool_calls", None):
-        return None
-    reply_text = extract_reply_text(reply).strip()
-    if not reply_text:
-        return None
-    return reply_text
-
-
-def has_non_category_tool_call(reply: AIMessage) -> bool:
+def has_non_selector_tool_call(reply: AIMessage) -> bool:
     for tool_call in getattr(reply, "tool_calls", []) or []:
         tool_name = tool_call.get("name")
         if isinstance(tool_name, str) and tool_name != "select_tool_category":
@@ -45,29 +37,46 @@ def has_non_category_tool_call(reply: AIMessage) -> bool:
     return False
 
 
-def invoke_model(model, messages: list[BaseMessage], bound_tools_summary: str) -> AIMessage:
-    """统一封装模型调用：把绑定工具摘要注入上下文并记录日志。"""
+def invoke_model(model, messages: list[BaseMessage], bound_tool_names: tuple[str, ...] = ()) -> AIMessage:
+    """统一封装模型调用并记录日志。"""
 
-    effective_messages = _inject_bound_tools_context(messages, bound_tools_summary)
-    logger.info("当前绑定工具: {}", bound_tools_summary)
-    logger.info("请求模型提示词:\n{}", format_messages_for_log(effective_messages))
-    reply = model.invoke(effective_messages)
+    logger.info("当前 bind_tools: {}", list(bound_tool_names))
+    logger.info("请求模型提示词:\n{}", format_messages_for_log(messages))
+    reply = model.invoke(messages)
     logger.info(
         "模型回复: text={} tool_calls={}",
-        extract_reply_text(reply),
+        getattr(reply, "content", ""),
         getattr(reply, "tool_calls", []),
     )
     return reply
 
 
-def _inject_bound_tools_context(messages: list[BaseMessage], bound_tools_summary: str) -> list[BaseMessage]:
-    normalized_summary = bound_tools_summary.strip()
-    if normalized_summary in {"", "[]"}:
-        return messages
+def build_selector_messages(state: ReplyState, context: GraphRuntimeContext) -> list[BaseMessage]:
+    base_messages = _format_state_messages(state=state, context=context)
+    selector_instruction = SystemMessage(
+        content="你可以直接调用核心工具；只有当需要非核心工具时，才调用 `select_tool_category` 先选择工具大类。若不需要工具，请直接自然回答，不要发起 tool call。"
+    )
+    return [selector_instruction, *base_messages]
 
-    tool_context_line = f"当前绑定工具：{normalized_summary}"
-    if messages and isinstance(messages[0], SystemMessage):
-        first_message = messages[0]
-        merged_content = f"{first_message.content}\n\n{tool_context_line}"
-        return [SystemMessage(content=merged_content), *messages[1:]]
-    return [SystemMessage(content=tool_context_line), *messages]
+
+def build_chat_messages(state: ReplyState, context: GraphRuntimeContext) -> list[BaseMessage]:
+    return _format_state_messages(state=state, context=context)
+
+
+def _format_state_messages(
+    state: ReplyState,
+    context: GraphRuntimeContext,
+) -> list[BaseMessage]:
+    if state.context_bundle is None:
+        return [HumanMessage(content=state.canonical_query or state.message.text)]
+
+    formatted_messages = list(context.context_formatter.format(state.context_bundle))
+    if formatted_messages and isinstance(formatted_messages[-1], HumanMessage):
+        final_question = state.canonical_query or state.message.text
+        formatted_messages[-1] = HumanMessage(content=final_question)
+    if state.rewrite_notes:
+        rewrite_note_message = SystemMessage(content="Rewrite 说明：\n- " + "\n- ".join(state.rewrite_notes))
+        insert_index = 1 if formatted_messages and isinstance(formatted_messages[0], SystemMessage) else 0
+        formatted_messages.insert(insert_index, rewrite_note_message)
+    trimmed_messages = context.context_budgeter.trim_messages(tuple(formatted_messages))
+    return list(trimmed_messages)
