@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from langchain_core.tools import BaseTool
+
 from app.agent.context.tools.history import build_history_tool_definition
 from app.agent.context.tools.web_search import build_web_search_tool_definition
 from app.agent.context.tools.models import ToolCategory, ToolCategoryName, ToolDefinition, ToolSpec
@@ -29,7 +31,7 @@ class ToolRegistry:
     def list_tool_specs(self) -> tuple[ToolSpec, ...]:
         return tuple(definition.spec for definition in self._tool_definitions.values())
 
-    def list_langchain_tools(self) -> list[object]:
+    def list_langchain_tools(self) -> list[BaseTool]:
         return [definition.spec.tool for definition in self._tool_definitions.values()]
 
     def list_tool_specs_by_category(self, category_name: ToolCategoryName) -> tuple[ToolSpec, ...]:
@@ -39,7 +41,7 @@ class ToolRegistry:
             if definition.spec.category.name == category_name
         )
 
-    def list_langchain_tools_by_category(self, category_name: ToolCategoryName) -> list[object]:
+    def list_langchain_tools_by_category(self, category_name: ToolCategoryName) -> list[BaseTool]:
         return [
             definition.spec.tool
             for definition in self._tool_definitions.values()

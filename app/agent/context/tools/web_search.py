@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from langchain_core.tools import tool
 
+from app.memory.models import HistorySearchResult
 from app.services.web_search import ExaWebSearchService, WebSearchResult
 
 from .models import ToolCallContext, ToolCategory, ToolDefinition, ToolExecutionResult, ToolSpec, WebSearchToolInput
+
+EMPTY_HISTORY_RESULTS: tuple[HistorySearchResult, ...] = ()
 
 WEB_SEARCH_TOOLS_CATEGORY = ToolCategory(
     name="web_search_tools",
@@ -39,7 +42,7 @@ def build_web_search_tool_definition(web_search_service: ExaWebSearchService) ->
             tool_name=spec.name,
             tool_call_id=tool_call_id,
             text=_format_web_search_results(search_results, web_search_service.is_available()),
-            structured_results=(),
+            structured_results=EMPTY_HISTORY_RESULTS,
         )
 
     return ToolDefinition(spec=spec, execute=execute)

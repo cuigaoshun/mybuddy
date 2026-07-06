@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from langchain_core.messages import AIMessage, ToolMessage
 
-from app.agent.context.builder import ConversationContextBuilder
-from app.agent.context.tools import ToolExecutor
+from app.agent.graph.runtime import GraphRuntimeContext
 from app.agent.context.tools.models import ToolCallContext
 
 from ...state import ReplyState
@@ -11,8 +10,7 @@ from ...state import ReplyState
 
 def tool_node(
     state: ReplyState,
-    tool_executor: ToolExecutor,
-    context_builder: ConversationContextBuilder,
+    context: GraphRuntimeContext,
 ) -> ReplyState:
     """工具执行节点：执行模型选中的小工具并把结果回灌到上下文。"""
 
@@ -38,7 +36,7 @@ def tool_node(
             continue
         tool_args = tool_call.get("args")
         # 先由模型决定小工具，再由执行器路由到对应实现。
-        execution_result = tool_executor.execute(
+        execution_result = context.tool_executor.execute(
             tool_name=tool_name,
             tool_args=tool_args,
             call_context=call_context,
@@ -47,8 +45,8 @@ def tool_node(
         if execution_result is None:
             continue
         # 工具的结构化结果进入上下文包，供下一轮模型继续使用。
-        next_bundle = context_builder.append_tool_results(next_bundle, execution_result.structured_results)
-        next_bundle = context_builder.append_tool_context(
+        next_bundle = context.context_builder.append_tool_results(next_bundle, execution_result.structured_results)
+        next_bundle = context.context_builder.append_tool_context(
             next_bundle,
             tool_name=execution_result.tool_name,
             content_text=execution_result.text,

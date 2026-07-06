@@ -3,7 +3,9 @@ from __future__ import annotations
 from dependency_injector import containers, providers
 
 from app.agent.context.builder import ConversationContextBuilder
-from app.agent.graph import GraphChatAgent, build_graph
+from app.agent.graph.agent import GraphChatAgent
+from app.agent.graph.builder import build_graph
+from app.agent.graph.runtime import LLMProvider
 from app.bootstrap.feishu import create_feishu_client
 from app.bootstrap.listener import Listener
 from app.bootstrap.postgres import get_engine
@@ -69,13 +71,16 @@ class AppContainer(containers.DeclarativeContainer):
     # 聊天模型客户端，应用生命周期内复用。
     chat_model = providers.Singleton(create_chat_model, config=llm_config)
 
+    # 图内模型提供者，统一暴露基础模型入口。
+    llm_provider = providers.Singleton(LLMProvider, base_model=chat_model)
+
     # 网页搜索服务，应用生命周期内复用。
     web_search_service = providers.Singleton(ExaWebSearchService, config=exa_config)
 
     # 编译后的 LangGraph，应用生命周期内复用。
     agent_graph = providers.Singleton(
         build_graph,
-        chat_model=chat_model,
+        llm_provider=llm_provider,
         conversation_memory_service=conversation_memory_service,
         web_search_service=web_search_service,
     )

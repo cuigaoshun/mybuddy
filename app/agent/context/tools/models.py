@@ -7,6 +7,8 @@ from typing import Callable, Literal
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
+from app.memory.models import HistorySearchResult
+
 ToolCategoryName = Literal["history_tools", "memory_tools", "web_search_tools"]
 
 
@@ -38,7 +40,7 @@ class ToolExecutionResult:
     tool_name: str
     tool_call_id: str
     text: str
-    structured_results: tuple[object, ...]
+    structured_results: tuple[HistorySearchResult, ...]
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from langchain_core.tools import BaseTool
 from langchain_core.tools import tool
 
 from .models import SelectToolCategoryInput, ToolCategory
 from .prompts import build_tool_selector_description
 
 
-def build_category_selector_tool(categories: tuple[ToolCategory, ...]) -> object:
+def build_category_selector_tool(categories: tuple[ToolCategory, ...]) -> BaseTool:
     selector_description = build_tool_selector_description(categories)
 
     @tool("select_tool_category", args_schema=SelectToolCategoryInput)

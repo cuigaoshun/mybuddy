@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from app.agent.context.models import ContextBundle, ContextEvidenceBlock, ContextSessionSnapshot, ToolContextBlock
+from langchain_core.tools import BaseTool
+
+from app.agent.context.models import ContextBundle, ContextEvidenceBlock, ContextEvidenceSource, ContextSessionSnapshot, ToolContextBlock
 from app.agent.context.system_prompt import SYSTEM_PROMPT
 from app.agent.context.tools.models import ToolCategoryName
 from app.agent.context.tools.prompts import build_tool_selector_description
@@ -100,17 +102,17 @@ class ConversationContextBuilder:
             enabled_tool_specs=category_tool_specs,
         )
 
-    def list_langchain_tools(self) -> list[object]:
+    def list_langchain_tools(self) -> list[BaseTool]:
         # 图层只拿到真正可绑定给模型的小工具对象，不关心注册细节。
         return self._tool_registry.list_langchain_tools()
 
-    def list_langchain_tools_by_category(self, category_name: ToolCategoryName) -> list[object]:
+    def list_langchain_tools_by_category(self, category_name: ToolCategoryName) -> list[BaseTool]:
         return self._tool_registry.list_langchain_tools_by_category(category_name)
 
-    def list_entry_langchain_tools(self) -> list[object]:
+    def list_entry_langchain_tools(self) -> list[BaseTool]:
         return self.list_langchain_tools_by_category("web_search_tools")
 
-    def build_category_selector_tool(self) -> object:
+    def build_category_selector_tool(self) -> BaseTool:
         return build_category_selector_tool(self._tool_registry.list_tool_categories())
 
     def get_tool_registry(self) -> ToolRegistry:
@@ -133,7 +135,7 @@ class ConversationContextBuilder:
     def _convert_memory_records_to_evidence(
         self,
         records: tuple[MemoryRecord, ...],
-        source: str,
+        source: ContextEvidenceSource,
         recent_records: tuple[MemoryRecord, ...],
     ) -> list[ContextEvidenceBlock]:
         # 用最近消息集合辅助判断哪些召回结果是窗口扩展出来的上下文片段。

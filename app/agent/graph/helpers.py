@@ -45,7 +45,7 @@ def has_non_category_tool_call(reply: AIMessage) -> bool:
     return False
 
 
-def invoke_model(model, messages: list, bound_tools_summary: str) -> AIMessage:
+def invoke_model(model, messages: list[BaseMessage], bound_tools_summary: str) -> AIMessage:
     """统一封装模型调用：把绑定工具摘要注入上下文并记录日志。"""
 
     effective_messages = _inject_bound_tools_context(messages, bound_tools_summary)

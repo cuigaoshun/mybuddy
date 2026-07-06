@@ -11,7 +11,7 @@ from .models import (
     ToolSpec,
     parse_tool_datetime,
 )
-from app.memory.models import ConversationHistoryQuery
+from app.memory.models import ConversationHistoryQuery, HistorySearchResult
 from app.memory.service import ConversationMemoryService
 
 HISTORY_TOOLS_CATEGORY = ToolCategory(
@@ -63,7 +63,7 @@ def build_history_tool_definition(conversation_memory_service: ConversationMemor
     return ToolDefinition(spec=spec, execute=execute)
 
 
-def _format_history_results(results: tuple[object, ...]) -> str:
+def _format_history_results(results: tuple[HistorySearchResult, ...]) -> str:
     if not results:
         return "未找到符合条件的历史消息。"
 
@@ -86,7 +86,7 @@ def _format_history_results(results: tuple[object, ...]) -> str:
     return "\n".join(lines)
 
 
-def _build_history_match_source(result: object) -> str:
+def _build_history_match_source(result: HistorySearchResult) -> str:
     matched_by_text = bool(getattr(result, "matched_by_text", False))
     matched_by_vector = bool(getattr(result, "matched_by_vector", False))
     if matched_by_text and matched_by_vector:

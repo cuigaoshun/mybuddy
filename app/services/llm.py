@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Protocol, Sequence
 
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_openai import ChatOpenAI
@@ -13,7 +13,7 @@ class ChatModel(Protocol):
     def invoke(self, input: list[BaseMessage]) -> AIMessage:
         ...
 
-    def bind_tools(self, tools: list[object]) -> "ChatModel":
+    def bind_tools(self, tools: Sequence[object]) -> "ChatModel":
         ...
 
     def get_num_tokens_from_messages(self, messages: list[BaseMessage]) -> int:

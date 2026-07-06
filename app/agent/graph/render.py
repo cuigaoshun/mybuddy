@@ -6,11 +6,13 @@ import sys
 if __package__ in {None, ""}:
     sys.path.append(str(Path(__file__).resolve().parents[3]))
     from app.agent.graph.builder import build_graph
+    from app.agent.graph.runtime import LLMProvider
     from app.memory.service import ConversationMemoryService
     from app.services.llm import ChatModel
     from app.services.web_search import ExaWebSearchService
 else:
     from .builder import build_graph
+    from .runtime import LLMProvider
     from app.memory.service import ConversationMemoryService
     from app.services.llm import ChatModel
     from app.services.web_search import ExaWebSearchService
@@ -30,7 +32,7 @@ def render_graph_png(compiled_graph, output_path: str | Path | None = None) -> b
 
 
 def build_and_render_graph_png(
-    chat_model: ChatModel,
+    llm_provider: LLMProvider,
     conversation_memory_service: ConversationMemoryService,
     web_search_service: ExaWebSearchService,
     output_path: str | Path | None = None,
@@ -39,7 +41,7 @@ def build_and_render_graph_png(
 
     # 适合在调试脚本或本地工具里一把生成业务图，而不用先手动拿 compiled graph。
     compiled_graph = build_graph(
-        chat_model=chat_model,
+        llm_provider=llm_provider,
         conversation_memory_service=conversation_memory_service,
         web_search_service=web_search_service,
     )
@@ -66,7 +68,7 @@ if __name__ == "__main__":
 
     output_path = Path("./agent-graph.png")
     png_bytes = build_and_render_graph_png(
-        chat_model=container.chat_model(),
+        llm_provider=container.llm_provider(),
         conversation_memory_service=container.conversation_memory_service(),
         web_search_service=container.web_search_service(),
         output_path=output_path,
