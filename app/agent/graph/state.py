@@ -34,5 +34,3 @@ class ReplyState(BaseModel):
     final_reply: str | None = None
     tool_round: int = 0
     max_tool_rounds: int = 3
-    decision_source: Literal["after_chat_model", "after_context_update"] | None = None
-    next_step: Literal["tool_selector", "tool_executor", "end"] | None = None

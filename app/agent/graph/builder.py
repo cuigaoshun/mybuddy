@@ -12,7 +12,6 @@ from app.services.web_search import ExaWebSearchService
 
 from .nodes.chat_model import chat_model_node
 from .nodes.context_update import context_update_node
-from .nodes.decision import decision_node
 from .nodes.load_memory import load_memory_node
 from .nodes.load_state import load_state_node
 from .nodes.rewrite import rewrite_node
@@ -20,7 +19,7 @@ from .nodes.tool_executor import tool_executor_node
 from .nodes.tool_expansion import tool_expansion_node
 from .nodes.tool_selector import tool_selector_node
 
-from .routes import route_after_decision, route_after_tool_selector
+from .routes import route_after_chat_model, route_after_context_update, route_after_tool_selector
 from .state import ReplyState
 
 
@@ -64,9 +63,6 @@ def build_graph(
     def chat_model_graph_node(state: ReplyState) -> ReplyState:
         return chat_model_node(state=state, context=runtime_context)
 
-    def decision_graph_node(state: ReplyState) -> ReplyState:
-        return decision_node(state=state, context=runtime_context)
-
     def tool_executor_graph_node(state: ReplyState) -> ReplyState:
         return tool_executor_node(state=state, context=runtime_context)
 
@@ -80,7 +76,6 @@ def build_graph(
     graph.add_node("tool_selector", tool_selector_graph_node)
     graph.add_node("tool_expansion", tool_expansion_graph_node)
     graph.add_node("chat_model", chat_model_graph_node)
-    graph.add_node("decision", decision_graph_node)
     graph.add_node("tool_executor", tool_executor_graph_node)
     graph.add_node("context_update", context_update_graph_node)
     graph.add_edge(START, "load_state")
@@ -89,8 +84,7 @@ def build_graph(
     graph.add_edge("rewrite", "tool_selector")
     graph.add_conditional_edges("tool_selector", route_after_tool_selector, {"tool_expansion": "tool_expansion", "tool_executor": "tool_executor", "end": END})
     graph.add_edge("tool_expansion", "chat_model")
-    graph.add_edge("chat_model", "decision")
+    graph.add_conditional_edges("chat_model", route_after_chat_model, {"tool_executor": "tool_executor", "end": END})
     graph.add_edge("tool_executor", "context_update")
-    graph.add_edge("context_update", "decision")
-    graph.add_conditional_edges("decision", route_after_decision, {"tool_selector": "tool_selector", "tool_executor": "tool_executor", "end": END})
+    graph.add_conditional_edges("context_update", route_after_context_update, {"tool_selector": "tool_selector", "end": END})
     return graph.compile()

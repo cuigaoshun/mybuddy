@@ -22,6 +22,5 @@ def chat_model_node(state: ReplyState, context: GraphRuntimeContext) -> ReplySta
         update={
             "messages": updated_messages,
             "final_reply": final_reply,
-            "decision_source": "after_chat_model",
         }
     )

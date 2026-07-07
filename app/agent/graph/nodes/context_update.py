@@ -8,7 +8,7 @@ from ..state import ReplyState
 def context_update_node(state: ReplyState, context: GraphRuntimeContext) -> ReplyState:
     context_bundle = state.context_bundle
     if context_bundle is None:
-        return state.model_copy(update={"decision_source": "after_context_update", "tool_round": state.tool_round + 1})
+        return state.model_copy(update={"tool_round": state.tool_round + 1})
 
     next_bundle = context_bundle
     for execution_result in state.latest_tool_results:
@@ -23,7 +23,6 @@ def context_update_node(state: ReplyState, context: GraphRuntimeContext) -> Repl
         update={
             "context_bundle": next_bundle,
             "latest_tool_results": (),
-            "decision_source": "after_context_update",
             "tool_round": state.tool_round + 1,
         }
     )
