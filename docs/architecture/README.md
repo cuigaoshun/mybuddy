@@ -76,7 +76,7 @@
 - `app/agent/graph/nodes/reply/node.py` 是当前正式回复节点
 - `app/agent/context/tools/executor.py` 是当前工具执行器
 - `app/agent/context/tools/registry.py` 是当前工具注册中心
-- `app/agent/context/tools/history.py` 和 `app/agent/context/tools/web_search.py` 是现有具体工具
+- `app/agent/context/tools/history_tools/search_history.py` 和 `app/agent/context/tools/web_search_tools/search_web.py` 是现有具体工具
 
 这几块说明当前仓库已经有：
 
@@ -137,11 +137,11 @@
 
 新图里的节点职责建议如下。
 
-#### `load_state`
+#### `load_memory`
 
-负责把 router 层传入的数据整理成图内统一状态。
+当前代码里，图已经不再保留单独的 `load_state` 节点，而是直接从 `load_memory` 开始构建初始上下文。
 
-它不负责复杂思考，只负责把当前消息、thread/session 标识、已有 messages、必要的会话元信息放入 state。
+它不负责复杂思考，只负责把当前消息、会话信息和最近记忆整理进图状态。
 
 #### `load_memory`
 
@@ -196,19 +196,15 @@
 
 这一步要和 `tool executor` 明确分开：selector 只负责决策，不负责执行。
 
-#### `tool_expansion`
+#### `tool policy`
 
-这也是新图里必须显式存在的一层。
+当前代码已经不再保留单独的 `tool_expansion` 层，而是把“当前轮到底开放哪些工具”收进选择策略本身：
 
-它负责按 selector 结果拼出当前轮真正启用的 tool set。
+- 核心工具常驻暴露给模型。
+- 非核心工具先通过 `select_tool_category` 选出工具大类。
+- 下一轮模型调用只绑定被选中类别下的工具。
 
-这一层的设计目标是把下面几类逻辑收进来：
-
-- 核心常驻工具，如 `memory_search`、`conversation_summary`
-- 动态工具，如 `web_search`、后续可能加入的 `db_query`、`code_exec`、`file_search`
-- 权限、裁剪、白名单、黑名单、tool policy
-
-当前仓库还没有全部这些工具，但这次重构的目标就是把图结构一次性改成能容纳这些能力的形式，而不是继续把工具绑定分散在 reply 节点里。
+也就是说，当前仓库实际落地的是“核心工具直达 + 非核心工具渐进式披露”的双轨结构，而不是旧方案里显式拆开的 `tool_expansion` 节点。
 
 #### `chat_model`
 
@@ -221,28 +217,22 @@
 
 #### `tool_executor`
 
-这一层是第一阶段必须保留为独立节点的核心层。
+当前代码里工具执行层已经改成两段：
 
-它负责：
+- 核心工具直接走 LangGraph 原生 `ToolNode`。
+- 非核心工具走一个很薄的动态执行节点，只负责按当前已解锁的工具名查 registry 并执行。
 
-- 执行当前轮 tool call
-- 归一化结果
-- 附加 metadata
-- 把工具输出写成统一结构
-
-现有 `app/agent/context/tools/executor.py` 可以作为这里的实现起点，但之后应该从“context 子模块里的工具辅助类”升级成图内明确的一层。
+这意味着当前仓库已经不再以 `app/agent/context/tools/executor.py` 作为统一工具执行入口，旧的 `ToolDefinition.execute` 那套手写分发链也已经退场。
 
 #### `context_update`
 
-这一层负责把工具结果、memory 补证据、追加消息、必要状态位更新统一写回 state。
+当前代码已经不再保留独立 `context_update` 节点，也不再把工具结果手工拼回提示词里。
 
-重点是：
+现在的真实策略是：
 
-- 上下文更新应成为显式状态更新
-- 不要只靠 prompt 拼装隐式表达“刚刚查到了什么”
-- 工具证据、展示文本、memory 写回入口都要在这里统一组织
-
-当前 `append_tool_results()` 和 `append_tool_context()` 已经是这个方向的最小原型，后面要进一步升级成正式的 context update layer。
+- 初始上下文仍然由 `load_memory` 一次构建。
+- 工具执行后的后续轮次主要依赖标准 `ToolMessage` 继续驱动模型。
+- 如果后续真的需要把工具结果再沉淀成结构化上下文层，再考虑重新引入更正式的 `context_update` 层。
 
 #### `decision`
 
@@ -273,18 +263,13 @@
 
 这次不是分阶段推进，而是一次性把主图切到下面这些节点：
 
-1. `load_state`
-2. `load_memory`
-3. `rewrite`
-4. `planner`
-5. `tool_selector`
-6. `tool_expansion`
-7. `chat_model`
-8. `tool_executor`
-9. `context_update`
-10. `decision`
+1. `load_memory`
+2. `tool_selector`
+3. `chat_model`
+4. `core_tools`
+5. `dynamic_tools`
 
-也就是说，这一版是“飞书陪伴型 Agent 主图的大规模整体重构”，但仍然不是大而全 Agent OS。
+也就是说，当前这版已经落地成一个更收敛的主图：保留 `load_memory`、`tool_selector`、`chat_model`，并把工具执行拆成“核心 ToolNode / 非核心动态节点”两段，而不是继续维持旧的 `tool_expansion + context_update` 链路。
 
 ## 这次重构明确不做什么
 
@@ -363,18 +348,14 @@
 重写后的主流程，应直接切换到下面这样：
 
 1. Router 把用户消息交给 Graph Agent。
-2. `load_state` 初始化图状态。
-3. `load_memory` 读取最近消息、相似召回和必要的长期记忆片段。
-4. `rewrite` 改写原始请求，产出 canonical query。
-5. `planner` 根据 canonical query、memory 和当前状态给出当轮计划。
-6. `tool_selector` 决定当前轮需要哪些工具类别和具体工具。
-7. `tool_expansion` 拼出当前轮 active tools。
-8. `chat_model` 决定直接回复还是调用工具。
-9. 如果调用工具，则进入 `tool_executor`。
-10. `context_update` 把工具结果、展示文本和 memory 补证据写回状态。
-11. `decision` 判断是否继续循环、是否重新规划或重新选工具。
-12. 没有后续工具需求时输出 final reply。
-13. Router 负责发送回复、写回助手消息、更新会话信息。
+2. `load_memory` 读取最近消息、相似召回和必要的长期记忆片段。
+3. `tool_selector` 决定当前轮是直接回复、直接命中核心工具，还是先选择非核心工具大类。
+4. `chat_model` 基于当前已开放工具决定直接回复还是继续发起 tool call。
+5. 如果调用核心工具，则进入 `core_tools`。
+6. 如果调用已解锁的非核心工具，则进入 `dynamic_tools`。
+7. 工具执行完成后继续回到 `chat_model`。
+8. 没有后续工具需求时输出 final reply。
+9. Router 负责发送回复、写回助手消息、更新会话信息。
 
 ## 文档结论
 
@@ -382,15 +363,10 @@
 
 对当前仓库来说，这次整体重构最重要的是把以下结构一次性立起来：
 
-- `load_state`
 - `load_memory`
-- `rewrite`
-- `planner`
 - `tool_selector`
-- `tool_expansion`
 - `chat_model`
-- `tool_executor`
-- `context_update`
-- `decision`
+- `core_tools`
+- `dynamic_tools`
 
 只要这个骨架整体切换完成，后面不管是补更强的记忆策略、更多工具、还是更复杂的计划节点，都有清楚的挂点，不会再把 `builder`、`reply_node` 或 `context_builder` 重新养成新的 God Object。

@@ -2,23 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal
 
 from app.event.models import IncomingChatMessage
 from app.memory.models import MemoryRecord
-
-# 约束历史证据来源的枚举值，便于格式化层输出统一标签。
-ContextEvidenceSource = Literal["similar_recall", "history_search"]
-
-
-@dataclass(frozen=True, slots=True)
-class ToolContextBlock:
-    """表示某个工具在本轮补充回来的可直接展示文本。"""
-
-    # 记录产出这段内容的工具名称。
-    tool_name: str
-    # 记录工具返回的文本内容本体。
-    content_text: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,14 +19,6 @@ class ContextEvidenceBlock:
     message_time: datetime
     # 证据片段的纯文本内容。
     content_text: str
-    # 证据来源类型，例如相似召回或历史查询。
-    source: ContextEvidenceSource
-    # 标记这条证据是否被全文检索命中。
-    matched_by_text: bool
-    # 标记这条证据是否被向量语义检索命中。
-    matched_by_vector: bool
-    # 标记这条证据是否属于命中消息窗口扩展出的上下文。
-    is_window_expanded: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,7 +51,3 @@ class ContextBundle:
     recent_records: tuple[MemoryRecord, ...]
     # 预先召回出的历史证据块。
     evidence_blocks: tuple[ContextEvidenceBlock, ...]
-    # 工具补查回来的历史证据块，默认为空。
-    tool_evidence_blocks: tuple[ContextEvidenceBlock, ...] = ()
-    # 工具补充回来的非历史类文本上下文，默认为空。
-    tool_context_blocks: tuple[ToolContextBlock, ...] = ()

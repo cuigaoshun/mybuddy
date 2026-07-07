@@ -48,6 +48,13 @@
 6. `services/im_sender` 调飞书 API 发送消息。
 7. 用户消息、助手消息、会话信息等数据通过 `memory` 抽象落到 PostgreSQL。
 
+当前 `app/agent/graph/` 里的工具调用链路已经收敛成两段：
+
+- 核心工具直接作为常驻工具绑定给模型，并通过 LangGraph 原生 `ToolNode` 执行。
+- 非核心工具先通过 `select_tool_category` 做工具大类选择，再只绑定该类别下的工具，由轻量动态工具节点执行。
+
+也就是说，当前图里已经不再维护旧的 `ToolExecutor + ToolDefinition.execute + tool_expansion + context_update` 这套手写工具执行链，也不再把工具结果额外手工拼回提示词里；后续轮次主要依赖标准 `ToolMessage` 继续驱动模型。
+
 ## 当前目录职责
 
 当前仓库里与一期主链路最相关的目录职责如下：
@@ -89,6 +96,18 @@
 - Router 不负责“思考”，而是负责把消息送到正确的会话与 Agent 流程里。
 
 一期重点不是把 RAG 做复杂，而是先保证记忆读写、检索入口和回复链路真的能用。
+
+## 当前工具调用方式
+
+当前工具层的组织方式已经比较明确：
+
+- `app/agent/context/tools/registry.py` 负责注册全部工具，并按“核心工具 / 工具大类”提供查询入口。
+- `app/agent/context/tools/web_search_tools/search_web.py` 这类核心工具可以直接绑定给模型，并走 LangGraph 原生 `ToolNode` 执行。
+- `app/agent/context/tools/history_tools/search_history.py` 这类非核心工具先不直接全量暴露，而是通过 `select_tool_category` 做渐进式披露。
+- `app/agent/graph/nodes/tool_selector.py` 负责判断当前轮是直接回复、直接命中核心工具，还是先选择非核心工具大类。
+- `app/agent/graph/nodes/tool_executor.py` 现在只保留一层非常薄的动态执行逻辑，用于执行当前已解锁类别下的非核心工具。
+
+这套设计的目标不是做一个通用工具平台，而是先把飞书陪伴型 Agent 当前最需要的“核心工具直达 + 非核心工具按需解锁”做简单、稳定、可维护。
 
 ## 存储为什么要先抽象
 
@@ -144,7 +163,7 @@
 
 这份文档用于说明下一步要把 `app/agent/graph/` 重写成什么结构，重点覆盖：
 
-- 新的图主流程如何从 `load_state` 走到 `tool loop`
+- 新的图主流程如何从 `load_memory` 走到 `tool loop`
 - 哪些能力第一阶段先做，哪些节点先占位
 - 当前实现与目标图之间的差异
 
