@@ -7,6 +7,7 @@ from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
 from app.core.config import LlmConfig
+from .llm_debug import DebugHandler
 
 
 class ChatModel(Protocol):
@@ -26,4 +27,5 @@ def create_chat_model(config: LlmConfig) -> ChatOpenAI:
         api_key=SecretStr(config.api_key),
         temperature=config.temperature,
         base_url=config.base_url,
+        callbacks=[DebugHandler()],
     )
