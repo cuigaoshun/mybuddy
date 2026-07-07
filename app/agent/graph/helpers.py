@@ -30,10 +30,16 @@ def extract_selected_category(reply: AIMessage) -> ToolCategoryName | None:
 
 
 def has_non_selector_tool_call(reply: AIMessage) -> bool:
+    """判断当前回复里是否包含 selector 以外的真实工具调用。"""
+
+    # 遍历模型产出的全部 tool_call。
     for tool_call in getattr(reply, "tool_calls", []) or []:
+        # 读取工具名。
         tool_name = tool_call.get("name")
+        # 只要出现 selector 之外的工具名，就说明模型想直接执行真实工具。
         if isinstance(tool_name, str) and tool_name != "select_tool_category":
             return True
+    # 否则说明只有 selector 调用或完全没有工具调用。
     return False
 
 
@@ -51,14 +57,21 @@ def invoke_model(model, messages: list[BaseMessage], bound_tool_names: tuple[str
 
 
 def build_selector_messages(state: ReplyState, context: GraphRuntimeContext) -> list[BaseMessage]:
+    """构建供 tool_selector 节点使用的消息序列。"""
+
+    # 先拿到基础上下文消息序列。
     base_messages = _format_state_messages(state=state, context=context)
+    # 再在最前面插入 selector 专用系统指令，强调何时选大类、何时可直接调用核心工具。
     selector_instruction = SystemMessage(
         content="你可以直接调用核心工具；只有当需要非核心工具时，才调用 `select_tool_category` 先选择工具大类。若不需要工具，请直接自然回答，不要发起 tool call。"
     )
+    # selector 指令固定放在最前面。
     return [selector_instruction, *base_messages]
 
 
 def build_chat_messages(state: ReplyState, context: GraphRuntimeContext) -> list[BaseMessage]:
+    """构建供 chat_model 节点使用的普通消息序列。"""
+
     return _format_state_messages(state=state, context=context)
 
 
@@ -66,16 +79,22 @@ def _format_state_messages(
     state: ReplyState,
     context: GraphRuntimeContext,
 ) -> list[BaseMessage]:
+    # 如果还没有上下文包，就退化成只带当前问题的单条消息。
     if state.context_bundle is None:
         return [HumanMessage(content=state.canonical_query or state.message.text)]
 
+    # 先把结构化上下文格式化成标准消息列表。
     formatted_messages = list(context.context_formatter.format(state.context_bundle))
+    # 最后一条如果是人类消息，用 canonical_query 覆盖成 rewrite 后的问题。
     if formatted_messages and isinstance(formatted_messages[-1], HumanMessage):
         final_question = state.canonical_query or state.message.text
         formatted_messages[-1] = HumanMessage(content=final_question)
+    # 有 rewrite 说明时，插入到系统前缀后面，帮助模型理解改写意图。
     if state.rewrite_notes:
         rewrite_note_message = SystemMessage(content="Rewrite 说明：\n- " + "\n- ".join(state.rewrite_notes))
         insert_index = 1 if formatted_messages and isinstance(formatted_messages[0], SystemMessage) else 0
         formatted_messages.insert(insert_index, rewrite_note_message)
+    # 最后统一经过预算器裁剪，控制 token 上限。
     trimmed_messages = context.context_budgeter.trim_messages(tuple(formatted_messages))
+    # 返回裁剪后的普通列表形式，方便后续 append reply。
     return list(trimmed_messages)

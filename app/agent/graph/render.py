@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
+# 兼容直接脚本运行场景，确保可以解析到仓库根目录下的 app 包。
 if __package__ in {None, ""}:
     sys.path.append(str(Path(__file__).resolve().parents[3]))
     from app.agent.graph.builder import build_graph
@@ -49,6 +50,7 @@ def build_and_render_graph_png(
 
 
 if __name__ == "__main__":
+    # 只有本地脚本运行时才临时加载这些开发辅助依赖。
     from dependency_injector import providers
     from dotenv import load_dotenv
 
@@ -56,9 +58,11 @@ if __name__ == "__main__":
     from app.core.config import init_config
     from app.event.bus import EventBus
 
+    # 先加载环境变量与配置。
     load_dotenv()
     config = init_config()
 
+    # 构建容器并把配置对象覆盖进去。
     container = AppContainer()
     container.feishu_config.override(providers.Object(config.feishu))
     container.postgres_config.override(providers.Object(config.postgres))
@@ -66,11 +70,14 @@ if __name__ == "__main__":
     container.exa_config.override(providers.Object(config.exa))
     container.event_bus.override(providers.Object(EventBus()))
 
+    # 指定默认输出路径。
     output_path = Path("./agent-graph.png")
+    # 构建图并导出 PNG。
     png_bytes = build_and_render_graph_png(
         llm_provider=container.llm_provider(),
         conversation_memory_service=container.conversation_memory_service(),
         web_search_service=container.web_search_service(),
         output_path=output_path,
     )
+    # 打印结果，方便本地确认输出是否成功。
     print(f"已生成 Agent 图 PNG：{output_path}（{len(png_bytes)} bytes）")

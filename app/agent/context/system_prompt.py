@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+# 定义陪伴型聊天 Agent 在上下文层统一使用的系统提示词。
 SYSTEM_PROMPT = """你是一个陪伴型聊天 agent。
 
 你的核心目标是基于当前用户消息和上下文，给出自然、真诚、简洁、连续的中文回复。
