@@ -9,6 +9,7 @@ from app.agent.graph.runtime import GraphRuntimeContext, LLMProvider
 from app.memory.service import ConversationMemoryService
 from app.services.web_search import ExaWebSearchService
 
+from .constants import GraphNodes
 from .nodes.chat_model import chat_model_node
 from .nodes.load_memory import load_memory_node
 from .nodes.tool_executor import core_tools_node, dynamic_tool_node
@@ -54,22 +55,31 @@ def build_graph(
     # 创建以 ReplyState 为统一状态结构的 LangGraph。
     graph = StateGraph(ReplyState)
     # 注册记忆加载节点。
-    graph.add_node("load_memory", load_memory_graph_node)
+    graph.add_node(GraphNodes.LOAD_MEMORY.value, load_memory_graph_node)
     # 注册主模型调用节点。
-    graph.add_node("chat_model", chat_model_graph_node)
+    graph.add_node(GraphNodes.CHAT_MODEL.value, chat_model_graph_node)
     # 注册核心工具执行节点。
-    graph.add_node("core_tools", core_tools_graph_node)
+    graph.add_node(GraphNodes.CORE_TOOLS.value, core_tools_graph_node)
     # 注册动态工具执行节点。
-    graph.add_node("dynamic_tools", dynamic_tool_graph_node)
+    graph.add_node(GraphNodes.DYNAMIC_TOOLS.value, dynamic_tool_graph_node)
     # 起点先进入上下文加载。
-    graph.add_edge(START, "load_memory")
+    graph.add_edge(START, GraphNodes.LOAD_MEMORY.value)
     # 初始上下文准备好后直接进入主模型节点。
-    graph.add_edge("load_memory", "chat_model")
-    # chat_model 决定是结束、走核心工具，还是走已解锁的动态工具。
-    graph.add_conditional_edges("chat_model", route_after_chat_model, {"chat_model": "chat_model", "core_tools": "core_tools", "dynamic_tools": "dynamic_tools", "end": END})
+    graph.add_edge(GraphNodes.LOAD_MEMORY.value, GraphNodes.CHAT_MODEL.value)
+    # chat_model 返回 GraphNodes 枚举，再由这里统一映射到真实图节点或 LangGraph 内置 END。
+    graph.add_conditional_edges(
+        GraphNodes.CHAT_MODEL.value,
+        route_after_chat_model,
+        {
+            GraphNodes.CHAT_MODEL: GraphNodes.CHAT_MODEL.value,
+            GraphNodes.CORE_TOOLS: GraphNodes.CORE_TOOLS.value,
+            GraphNodes.DYNAMIC_TOOLS: GraphNodes.DYNAMIC_TOOLS.value,
+            GraphNodes.END: END,
+        },
+    )
     # 核心工具执行后继续回到主模型。
-    graph.add_edge("core_tools", "chat_model")
+    graph.add_edge(GraphNodes.CORE_TOOLS.value, GraphNodes.CHAT_MODEL.value)
     # 动态工具执行后继续回到主模型。
-    graph.add_edge("dynamic_tools", "chat_model")
+    graph.add_edge(GraphNodes.DYNAMIC_TOOLS.value, GraphNodes.CHAT_MODEL.value)
     # 编译并返回可执行图实例。
     return graph.compile()
