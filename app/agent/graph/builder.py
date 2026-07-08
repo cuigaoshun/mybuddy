@@ -71,10 +71,10 @@ def build_graph(
         GraphNodes.CHAT_MODEL.value,
         route_after_chat_model,
         {
-            GraphNodes.CHAT_MODEL: GraphNodes.CHAT_MODEL.value,
-            GraphNodes.CORE_TOOLS: GraphNodes.CORE_TOOLS.value,
-            GraphNodes.DYNAMIC_TOOLS: GraphNodes.DYNAMIC_TOOLS.value,
-            GraphNodes.END: END,
+            GraphNodes.CHAT_MODEL.value: GraphNodes.CHAT_MODEL.value,
+            GraphNodes.CORE_TOOLS.value: GraphNodes.CORE_TOOLS.value,
+            GraphNodes.DYNAMIC_TOOLS.value: GraphNodes.DYNAMIC_TOOLS.value,
+            GraphNodes.END.value: END,
         },
     )
     # 核心工具执行后继续回到主模型。
