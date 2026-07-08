@@ -4,7 +4,7 @@ from langchain_core.messages import BaseMessage
 from pydantic import BaseModel, ConfigDict
 
 from app.agent.context.models import ContextBundle
-from app.agent.context.tools.models import ToolCategoryName
+from app.agent.context.tools.models import ToolCategorySelection
 from app.event.models import IncomingChatMessage
 from app.memory.models import ChatSessionInfo
 
@@ -23,8 +23,12 @@ class ReplyState(BaseModel):
     context_bundle: ContextBundle | None = None
     # 当前轮真正送进模型的消息序列，以及模型/工具回写后的消息累计。
     messages: tuple[BaseMessage, ...] = ()
-    # 当前轮选中的工具大类；核心工具路径时为空。
-    selected_tool_category: ToolCategoryName | None = None
+    # 当前轮已选中的非核心工具大类集合；为空时表示后续只允许核心工具。
+    selected_tool_category: ToolCategorySelection | None = None
+    # 标记当前对话是否已经完成 selector 阶段，避免每轮都重新绑定 selector 工具。
+    selector_resolved: bool = False
+    # 标记 selector 刚完成且需要 router 立即再回到 chat_model 跑下一轮。
+    selector_pending_chat_model: bool = False
     # 如果已经拿到最终自然语言回复，就写在这里并结束图。
     final_reply: str | None = None
     # 当前已经跑了多少轮工具回路。

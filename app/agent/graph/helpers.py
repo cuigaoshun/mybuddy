@@ -2,30 +2,8 @@ from __future__ import annotations
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 
-from app.agent.context.tools.models import ToolCategoryName
-
 from .runtime import GraphRuntimeContext
 from .state import ReplyState
-
-
-def extract_selected_category(reply: AIMessage) -> ToolCategoryName | None:
-    # 逐个检查模型返回的 tool call。
-    for tool_call in getattr(reply, "tool_calls", []) or []:
-        # 只关心工具大类选择器本身。
-        if tool_call.get("name") != "select_tool_category":
-            continue
-        # 读取当前工具调用参数。
-        tool_args = tool_call.get("args")
-        # 非字典参数直接跳过，避免异常结构污染流程。
-        if not isinstance(tool_args, dict):
-            continue
-        # 提取被模型选中的工具大类名称。
-        category_name = tool_args.get("category_name")
-        # 只接受当前仓库已注册的非核心工具大类。
-        if category_name in {"history_tools", "memory_tools", "web_search_tools"}:
-            return category_name
-    # 没有选出合法工具大类时返回空。
-    return None
 
 
 def has_non_selector_tool_call(reply: AIMessage) -> bool:
@@ -43,11 +21,6 @@ def has_non_selector_tool_call(reply: AIMessage) -> bool:
 def invoke_model(model, messages: list[BaseMessage]) -> AIMessage:
     # 用当前消息序列直接调用模型。
     return model.invoke(messages)
-
-
-def build_selector_messages(state: ReplyState, context: GraphRuntimeContext) -> list[BaseMessage]:
-    # selector 阶段当前直接复用标准聊天消息序列。
-    return build_chat_messages(state=state, context=context)
 
 
 def build_chat_messages(state: ReplyState, context: GraphRuntimeContext) -> list[BaseMessage]:

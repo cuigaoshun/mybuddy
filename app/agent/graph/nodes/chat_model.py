@@ -1,26 +1,136 @@
 from __future__ import annotations
 
+from langgraph.types import Command
+
+from app.agent.context.tools.selector import build_category_selector_tool
 from app.agent.graph.runtime import GraphRuntimeContext
 from app.agent.util import extract_reply_text
 
-from ..helpers import build_chat_messages, invoke_model
+from ..helpers import build_chat_messages, has_non_selector_tool_call, invoke_model
 from ..state import ReplyState
 
 
 def chat_model_node(state: ReplyState, context: GraphRuntimeContext) -> ReplyState:
+    # 先构建当前轮真正送给模型的消息序列。
     messages = build_chat_messages(state, context)
-    if state.tool_round >= state.max_tool_rounds:
-        model = context.llm_provider.model()
-    elif state.selected_tool_category is None:
-        model = context.llm_provider.model().bind_tools(context.tool_registry.list_core_tools())
-    else:
-        model = context.llm_provider.model().bind_tools(context.tool_registry.list_category_tools(state.selected_tool_category))
+    # 再根据当前状态决定本轮要绑定哪些工具。
+    model = _build_chat_model(state=state, context=context)
+    # 调模型拿到本轮回复。
     reply = invoke_model(model=model, messages=messages)
+    # selector 阶段尚未完成时，先走 selector 专用分支处理。
+    if not state.selector_resolved:
+        return _handle_selector_reply(state=state, context=context, messages=messages, reply=reply)
+    # 常规阶段把模型回复追加进消息历史。
     updated_messages = tuple([*messages, reply])
+    # 只有没有 tool_call 时，当前轮才算拿到最终自然语言回复。
     final_reply = None if getattr(reply, "tool_calls", None) else extract_reply_text(reply)
     return state.model_copy(
         update={
             "messages": updated_messages,
             "final_reply": final_reply,
+            # 常规回复轮次不需要再强制 router 回到 chat_model。
+            "selector_pending_chat_model": False,
         }
     )
+
+
+def _build_chat_model(state: ReplyState, context: GraphRuntimeContext):
+    # 超过最大工具轮次后，直接退回纯聊天模型，避免无限循环。
+    if state.tool_round >= state.max_tool_rounds:
+        return context.llm_provider.model()
+    # selector 阶段优先同时暴露 selector 工具和核心工具。
+    if not state.selector_resolved:
+        selector_tool = build_category_selector_tool(context.tool_registry.list_non_core_categories())
+        return context.llm_provider.model().bind_tools([selector_tool, *context.tool_registry.list_core_tools()])
+    # selector 完成但未选中非核心工具时，只保留核心工具。
+    if state.selected_tool_category is None:
+        return context.llm_provider.model().bind_tools(context.tool_registry.list_core_tools())
+    # selector 选中了非核心工具大类后，只暴露这些类别下的工具集合。
+    return context.llm_provider.model().bind_tools(context.tool_registry.list_categories_tools(state.selected_tool_category))
+
+
+def _handle_selector_reply(
+    state: ReplyState,
+    context: GraphRuntimeContext,
+    messages,
+    reply,
+) -> ReplyState:
+    # 如果 selector 阶段已经直接命中核心工具，就按核心工具分支继续走。
+    if has_non_selector_tool_call(reply):
+        return state.model_copy(
+            update={
+                "messages": tuple([*messages, reply]),
+                "selected_tool_category": None,
+                "selector_resolved": True,
+                # 已经进入真实工具执行，不需要 selector 专用回跳。
+                "selector_pending_chat_model": False,
+            }
+        )
+    # 没有 tool_call 时，说明 selector 阶段可以直接给用户自然语言回复。
+    direct_reply_text = _extract_direct_reply_text(reply)
+    if direct_reply_text is not None:
+        return state.model_copy(
+            update={
+                "final_reply": direct_reply_text,
+                "selector_resolved": True,
+                # 已经结束回复，不需要继续回到 chat_model。
+                "selector_pending_chat_model": False,
+            }
+        )
+    # 其余情况说明模型只调用了 selector 工具，此时真正执行 selector 工具并写回状态。
+    selector_tool = build_category_selector_tool(context.tool_registry.list_non_core_categories())
+    selector_command = _invoke_selector_tool(selector_tool=selector_tool, reply=reply)
+    return _apply_selector_command(state=state, selector_command=selector_command)
+
+
+def _extract_direct_reply_text(reply) -> str | None:
+    if getattr(reply, "tool_calls", None):
+        return None
+    reply_text = extract_reply_text(reply).strip()
+    if reply_text == "":
+        return None
+    return reply_text
+
+
+def _invoke_selector_tool(selector_tool, reply) -> Command | None:
+    # 从模型返回的 tool_calls 里找到 selector 调用并真正执行它。
+    for tool_call in getattr(reply, "tool_calls", []) or []:
+        if tool_call.get("name") != "select_tool_category":
+            continue
+        tool_args = tool_call.get("args")
+        result = selector_tool.invoke(tool_args if isinstance(tool_args, dict) else {})
+        # 只接受 selector 工具返回的 Command 更新结果。
+        if isinstance(result, Command):
+            return result
+    return None
+
+
+def _apply_selector_command(state: ReplyState, selector_command: Command | None) -> ReplyState:
+    # 没拿到合法 Command 时，回退成“selector 已完成，但未开放非核心工具”的状态。
+    if selector_command is None:
+        return state.model_copy(
+            update={
+                "selected_tool_category": None,
+                "selector_resolved": True,
+                # 让 router 立即再回到 chat_model，按 selector 结果继续跑下一轮。
+                "selector_pending_chat_model": True,
+            }
+        )
+    # 读取 selector 工具给出的状态更新内容。
+    command_update = getattr(selector_command, "update", None)
+    # update 结构不合法时，也退回到只开放核心工具的安全状态。
+    if not isinstance(command_update, dict):
+        return state.model_copy(
+            update={
+                "selected_tool_category": None,
+                "selector_resolved": True,
+                "selector_pending_chat_model": True,
+            }
+        )
+    # 正常情况下合并 selector 的选择结果，并通知 router 立即回到 chat_model。
+    updated_state = {
+        **command_update,
+        "selector_resolved": True,
+        "selector_pending_chat_model": True,
+    }
+    return state.model_copy(update=updated_state)

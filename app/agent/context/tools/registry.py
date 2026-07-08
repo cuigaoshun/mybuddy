@@ -3,7 +3,7 @@ from __future__ import annotations
 from langchain_core.tools import BaseTool
 
 from .history_tools.search_history import HistoryToolDefinition
-from .models import RegisteredTool, ToolCategory, ToolCategoryName
+from .models import RegisteredTool, ToolCategory, ToolCategoryName, ToolCategorySelection
 from .web_search_tools.search_web import WebSearchToolDefinition
 from app.memory.service import ConversationMemoryService
 from app.services.web_search import ExaWebSearchService
@@ -106,6 +106,21 @@ class ToolRegistry:
         """返回某个工具大类下的工具对象集合。"""
 
         return self.get_tools(self.list_category_tool_names(category_name))
+
+    def list_categories_tool_names(self, category_names: ToolCategorySelection) -> tuple[str, ...]:
+        """返回多个工具大类合并后的工具名集合。"""
+
+        merged_names: list[str] = []
+        for category_name in category_names:
+            for tool_name in self.list_category_tool_names(category_name):
+                if tool_name not in merged_names:
+                    merged_names.append(tool_name)
+        return tuple(merged_names)
+
+    def list_categories_tools(self, category_names: ToolCategorySelection) -> list[BaseTool]:
+        """返回多个工具大类合并后的工具对象集合。"""
+
+        return self.get_tools(self.list_categories_tool_names(category_names))
 
     def get_category(self, category_name: ToolCategoryName) -> ToolCategory | None:
         """按大类名返回工具大类信息。"""

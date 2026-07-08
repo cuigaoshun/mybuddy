@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 # 统一约束工具大类名称，避免上下游各写一套字符串。
 ToolCategoryName = Literal["history_tools", "memory_tools", "web_search_tools"]
+ToolCategorySelection = tuple[ToolCategoryName, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,5 +54,4 @@ class ToolDefinition(ABC):
 class SelectToolCategoryInput(BaseModel):
     """工具大类选择器的输入参数模型。"""
 
-    # 当前选择的工具大类名称。
-    category_name: ToolCategoryName = Field(description="选中的工具大类名称。")
+    category_names: list[ToolCategoryName] = Field(description="选中的工具大类名称列表，可一次选择多个大类。")
