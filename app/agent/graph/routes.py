@@ -17,8 +17,5 @@ def route_after_chat_model(state: ReplyState) -> GraphNodes:
     # 没有 tool_call 时说明本轮已经得到最终自然语言回复。
     if not isinstance(last_message, AIMessage) or not getattr(last_message, "tool_calls", None):
         return GraphNodes.END
-    # 没有选中非核心工具类别时，tool_call 只能由核心工具节点执行。
-    if state.selected_tool_category is None:
-        return GraphNodes.CORE_TOOLS
-    # 已经选中非核心工具类别时，返回动态工具节点枚举，由 builder 统一映射到实际节点名。
-    return GraphNodes.DYNAMIC_TOOLS
+    # 只要当前轮存在真实工具调用，就统一进入工具执行节点。
+    return GraphNodes.EXECUTE_TOOLS

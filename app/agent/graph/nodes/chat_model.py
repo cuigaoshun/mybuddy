@@ -43,14 +43,17 @@ def _build_chat_model(state: ReplyState, context: GraphRuntimeContext):
         return context.llm_provider.model()
     # 所有工具轮次都继续暴露 selector 工具，允许模型在后续轮次重新选择或扩展工具大类。
     selector_tool = build_category_selector_tool(context.tool_registry.list_non_core_categories())
+    core_tools = context.tool_registry.list_core_tools()
     # selector 阶段优先同时暴露 selector 工具和核心工具。
     if not state.selector_resolved:
-        return context.llm_provider.model().bind_tools([selector_tool, *context.tool_registry.list_core_tools()])
+        return context.llm_provider.model().bind_tools([selector_tool, *core_tools])
     # selector 完成但未选中非核心工具时，只保留核心工具。
     if state.selected_tool_category is None:
-        return context.llm_provider.model().bind_tools([selector_tool, *context.tool_registry.list_core_tools()])
-    # selector 选中了非核心工具大类后，只暴露这些类别下的工具集合。
-    return context.llm_provider.model().bind_tools([selector_tool, *context.tool_registry.list_categories_tools(state.selected_tool_category)])
+        return context.llm_provider.model().bind_tools([selector_tool, *core_tools])
+    # selector 选中了非核心工具大类后，继续同时暴露核心工具与这些类别下的工具集合。
+    return context.llm_provider.model().bind_tools(
+        [selector_tool, *core_tools, *context.tool_registry.list_categories_tools(state.selected_tool_category)]
+    )
 
 
 def _handle_selector_reply(

@@ -10,9 +10,7 @@ class GraphNodes(str, Enum):
     LOAD_MEMORY = "load_memory"
     # 主模型节点，负责 selector 决策、常规推理与下一轮工具选择。
     CHAT_MODEL = "chat_model"
-    # 核心工具执行节点，对应始终可直接调用的核心工具集合。
-    CORE_TOOLS = "core_tools"
-    # 动态工具执行节点，对应 selector 选中后开放的非核心工具集合。
-    DYNAMIC_TOOLS = "dynamic_tools"
+    # 统一工具执行节点，对应当前轮允许执行的核心工具与动态工具集合。
+    EXECUTE_TOOLS = "execute_tools"
     # 图内路由层使用的结束标记，再由 builder 映射到 LangGraph 内置 END。
     END = "end"

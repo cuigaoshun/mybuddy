@@ -12,7 +12,7 @@ from app.services.web_search import ExaWebSearchService
 from .constants import GraphNodes
 from .nodes.chat_model import chat_model_node
 from .nodes.load_memory import load_memory_node
-from .nodes.tool_executor import core_tools_node, dynamic_tool_node
+from .nodes.tool_executor import execute_tools_node
 
 from .routes import route_after_chat_model
 from .state import ReplyState
@@ -46,11 +46,8 @@ def build_graph(
     def chat_model_graph_node(state: ReplyState) -> ReplyState:
         return chat_model_node(state=state, context=runtime_context)
 
-    def core_tools_graph_node(state: ReplyState) -> ReplyState:
-        return core_tools_node(state=state, context=runtime_context)
-
-    def dynamic_tool_graph_node(state: ReplyState) -> ReplyState:
-        return dynamic_tool_node(state=state, context=runtime_context)
+    def execute_tools_graph_node(state: ReplyState) -> ReplyState:
+        return execute_tools_node(state=state, context=runtime_context)
 
     # 创建以 ReplyState 为统一状态结构的 LangGraph。
     graph = StateGraph(ReplyState)
@@ -58,10 +55,8 @@ def build_graph(
     graph.add_node(GraphNodes.LOAD_MEMORY.value, load_memory_graph_node)
     # 注册主模型调用节点。
     graph.add_node(GraphNodes.CHAT_MODEL.value, chat_model_graph_node)
-    # 注册核心工具执行节点。
-    graph.add_node(GraphNodes.CORE_TOOLS.value, core_tools_graph_node)
-    # 注册动态工具执行节点。
-    graph.add_node(GraphNodes.DYNAMIC_TOOLS.value, dynamic_tool_graph_node)
+    # 注册统一工具执行节点。
+    graph.add_node(GraphNodes.EXECUTE_TOOLS.value, execute_tools_graph_node)
     # 起点先进入上下文加载。
     graph.add_edge(START, GraphNodes.LOAD_MEMORY.value)
     # 初始上下文准备好后直接进入主模型节点。
@@ -72,14 +67,11 @@ def build_graph(
         route_after_chat_model,
         {
             GraphNodes.CHAT_MODEL.value: GraphNodes.CHAT_MODEL.value,
-            GraphNodes.CORE_TOOLS.value: GraphNodes.CORE_TOOLS.value,
-            GraphNodes.DYNAMIC_TOOLS.value: GraphNodes.DYNAMIC_TOOLS.value,
+            GraphNodes.EXECUTE_TOOLS.value: GraphNodes.EXECUTE_TOOLS.value,
             GraphNodes.END.value: END,
         },
     )
-    # 核心工具执行后继续回到主模型。
-    graph.add_edge(GraphNodes.CORE_TOOLS.value, GraphNodes.CHAT_MODEL.value)
-    # 动态工具执行后继续回到主模型。
-    graph.add_edge(GraphNodes.DYNAMIC_TOOLS.value, GraphNodes.CHAT_MODEL.value)
+    # 工具执行后统一回到主模型。
+    graph.add_edge(GraphNodes.EXECUTE_TOOLS.value, GraphNodes.CHAT_MODEL.value)
     # 编译并返回可执行图实例。
     return graph.compile()
