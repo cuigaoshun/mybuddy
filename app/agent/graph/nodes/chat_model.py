@@ -17,11 +17,8 @@ def chat_model_node(state: ReplyState, context: GraphRuntimeContext) -> ReplySta
     model = _build_chat_model(state=state, context=context)
     # 调模型拿到本轮回复。
     reply = invoke_model(model=model, messages=messages)
-    # 只要当前轮再次调用了 selector 工具，就优先重跑 selector 流程并覆盖当前工具大类选择结果。
-    if _has_selector_tool_call(reply):
-        return _handle_selector_reply(state=state, context=context, messages=messages, reply=reply)
-    # selector 阶段尚未完成时，先走 selector 专用分支处理。
-    if not state.selector_resolved:
+    # 只要当前轮仍处于 selector 阶段，或再次调用了 selector 工具，就统一走 selector 分支处理。
+    if _should_handle_selector_reply(state=state, reply=reply):
         return _handle_selector_reply(state=state, context=context, messages=messages, reply=reply)
     # 常规阶段把模型回复追加进消息历史。
     updated_messages = tuple([*messages, reply])
@@ -72,9 +69,7 @@ def _handle_selector_reply(
             update={
                 "messages": tuple([*messages, reply]),
                 "selected_tool_category": None,
-                "selector_resolved": True,
-                # 已经进入真实工具执行，不需要 selector 专用回跳。
-                "selector_pending_chat_model": False,
+                **_build_selector_status_update(should_reenter_chat_model=False),
             }
         )
     # 没有 tool_call 时，说明 selector 阶段可以直接给用户自然语言回复。
@@ -83,9 +78,7 @@ def _handle_selector_reply(
         return state.model_copy(
             update={
                 "final_reply": direct_reply_text,
-                "selector_resolved": True,
-                # 已经结束回复，不需要继续回到 chat_model。
-                "selector_pending_chat_model": False,
+                **_build_selector_status_update(should_reenter_chat_model=False),
             }
         )
     # 其余情况说明当前轮没有工具也没有直接回复，按安全兜底结束 selector 阶段。
@@ -108,6 +101,10 @@ def _has_selector_tool_call(reply) -> bool:
     return False
 
 
+def _should_handle_selector_reply(state: ReplyState, reply) -> bool:
+    return (not state.selector_resolved) or _has_selector_tool_call(reply)
+
+
 def _invoke_selector_tool(selector_tool, reply) -> Command | None:
     # 从模型返回的 tool_calls 里找到 selector 调用并真正执行它。
     for tool_call in getattr(reply, "tool_calls", []) or []:
@@ -127,9 +124,7 @@ def _apply_selector_command(state: ReplyState, selector_command: Command | None)
         return state.model_copy(
             update={
                 "selected_tool_category": None,
-                "selector_resolved": True,
-                # 让 router 立即再回到 chat_model，按 selector 结果继续跑下一轮。
-                "selector_pending_chat_model": True,
+                **_build_selector_status_update(should_reenter_chat_model=True),
             }
         )
     # 读取 selector 工具给出的状态更新内容。
@@ -139,14 +134,19 @@ def _apply_selector_command(state: ReplyState, selector_command: Command | None)
         return state.model_copy(
             update={
                 "selected_tool_category": None,
-                "selector_resolved": True,
-                "selector_pending_chat_model": True,
+                **_build_selector_status_update(should_reenter_chat_model=True),
             }
         )
     # 正常情况下合并 selector 的选择结果，并通知 router 立即回到 chat_model。
     updated_state = {
         **command_update,
-        "selector_resolved": True,
-        "selector_pending_chat_model": True,
+        **_build_selector_status_update(should_reenter_chat_model=True),
     }
     return state.model_copy(update=updated_state)
+
+
+def _build_selector_status_update(should_reenter_chat_model: bool) -> dict[str, bool]:
+    return {
+        "selector_resolved": True,
+        "selector_pending_chat_model": should_reenter_chat_model,
+    }
