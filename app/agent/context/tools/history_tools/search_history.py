@@ -2,6 +2,7 @@ from langchain_core.tools import tool
 from langchain.tools import ToolRuntime
 
 from app.agent.context.tools.models import RegisteredTool, ToolDefinition
+from app.agent.context.tools.tool_runtime import get_reply_state
 from app.memory.models import ConversationHistoryQuery, HistorySearchResult
 from app.memory.service import ConversationMemoryService
 
@@ -25,7 +26,9 @@ class HistoryToolDefinition(ToolDefinition):
             """查询当前会话指定时间范围内的历史消息，可结合关键词与语义召回。"""
 
             # 直接从 ToolRuntime 读取当前图状态。
-            state = runtime.state
+            state = get_reply_state(runtime)
+            if state is None:
+                return "当前缺少会话状态，无法执行历史查询。"
             # 基于当前会话执行历史检索。
             search_results = tuple(
                 conversation_memory_service.search_history(
