@@ -4,7 +4,7 @@ from dependency_injector import containers, providers
 
 from app.agent.graph.agent import GraphChatAgent
 from app.agent.graph.builder import build_graph
-from app.agent.graph.runtime import LLMProvider
+from app.agent.graph.runtime import GraphServices, LLMProvider
 from app.bootstrap.feishu import create_feishu_client
 from app.bootstrap.listener import Listener
 from app.bootstrap.postgres import get_engine
@@ -76,12 +76,18 @@ class AppContainer(containers.DeclarativeContainer):
     # 网页搜索服务，应用生命周期内复用。
     web_search_service = providers.Singleton(ExaWebSearchService, config=exa_config)
 
+    # 图装配阶段依赖的业务服务聚合。
+    graph_services = providers.Singleton(
+        GraphServices,
+        conversation_memory_service=conversation_memory_service,
+        web_search_service=web_search_service,
+    )
+
     # 编译后的 LangGraph，应用生命周期内复用。
     agent_graph = providers.Singleton(
         build_graph,
         llm_provider=llm_provider,
-        conversation_memory_service=conversation_memory_service,
-        web_search_service=web_search_service,
+        service=graph_services,
     )
 
     # 聊天 Agent，负责把消息送进图并拿回最终回复。

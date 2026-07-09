@@ -7,16 +7,10 @@ import sys
 if __package__ in {None, ""}:
     sys.path.append(str(Path(__file__).resolve().parents[3]))
     from app.agent.graph.builder import build_graph
-    from app.agent.graph.runtime import LLMProvider
-    from app.memory.service import ConversationMemoryService
-    from app.services.llm import ChatModel
-    from app.services.web_search import ExaWebSearchService
+    from app.agent.graph.runtime import GraphServices, LLMProvider
 else:
     from .builder import build_graph
-    from .runtime import LLMProvider
-    from app.memory.service import ConversationMemoryService
-    from app.services.llm import ChatModel
-    from app.services.web_search import ExaWebSearchService
+    from .runtime import GraphServices, LLMProvider
 
 
 def render_graph_png(compiled_graph, output_path: str | Path | None = None) -> bytes:
@@ -34,8 +28,7 @@ def render_graph_png(compiled_graph, output_path: str | Path | None = None) -> b
 
 def build_and_render_graph_png(
     llm_provider: LLMProvider,
-    conversation_memory_service: ConversationMemoryService,
-    web_search_service: ExaWebSearchService,
+    service: GraphServices,
     output_path: str | Path | None = None,
 ) -> bytes:
     """直接基于依赖构建业务图并导出 PNG。"""
@@ -43,8 +36,7 @@ def build_and_render_graph_png(
     # 适合在调试脚本或本地工具里一把生成业务图，而不用先手动拿 compiled graph。
     compiled_graph = build_graph(
         llm_provider=llm_provider,
-        conversation_memory_service=conversation_memory_service,
-        web_search_service=web_search_service,
+        service=service,
     )
     return render_graph_png(compiled_graph=compiled_graph, output_path=output_path)
 
@@ -75,8 +67,7 @@ if __name__ == "__main__":
     # 构建图并导出 PNG。
     png_bytes = build_and_render_graph_png(
         llm_provider=container.llm_provider(),
-        conversation_memory_service=container.conversation_memory_service(),
-        web_search_service=container.web_search_service(),
+        service=container.graph_services(),
         output_path=output_path,
     )
     # 打印结果，方便本地确认输出是否成功。

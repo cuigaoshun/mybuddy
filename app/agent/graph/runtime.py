@@ -6,7 +6,9 @@ from app.agent.context.builder import ConversationContextBuilder
 from app.agent.context.budget import ContextMessageBudgeter
 from app.agent.context.formatter import ConversationContextFormatter
 from app.agent.context.tools.registry import ToolRegistry
+from app.memory.service import ConversationMemoryService
 from app.services.llm import ChatModel
+from app.services.web_search import ExaWebSearchService
 
 
 @dataclass(frozen=True)
@@ -35,3 +37,11 @@ class GraphRuntimeContext:
     context_budgeter: ContextMessageBudgeter
     # 统一提供核心工具与动态工具类别查询能力。
     tool_registry: ToolRegistry
+
+
+@dataclass(frozen=True)
+class GraphServices:
+    """图装配阶段需要的业务服务聚合。"""
+
+    conversation_memory_service: ConversationMemoryService
+    web_search_service: ExaWebSearchService

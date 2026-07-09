@@ -3,10 +3,10 @@ from __future__ import annotations
 from app.agent.context.models import ContextBundle, ContextEvidenceBlock, ContextSessionSnapshot
 from app.agent.context.system_prompt import SYSTEM_PROMPT
 from app.agent.context.tools.registry import ToolRegistry
+from app.agent.context.tools.models import RegisteredTool
 from app.event.models import IncomingChatMessage
 from app.memory.models import ChatSessionInfo, MemoryRecord
 from app.memory.service import ConversationMemoryService
-from app.services.web_search import ExaWebSearchService
 
 
 class ConversationContextBuilder:
@@ -15,12 +15,12 @@ class ConversationContextBuilder:
     def __init__(
         self,
         conversation_memory_service: ConversationMemoryService,
-        web_search_service: ExaWebSearchService,
+        registered_tools: tuple[RegisteredTool, ...],
     ) -> None:
         # 保存对话记忆服务，后续用于读取最近消息和相似召回结果。
         self._conversation_memory_service = conversation_memory_service
         # 提前创建工具注册中心，统一收拢全部工具对象。
-        self._tool_registry = ToolRegistry(conversation_memory_service, web_search_service)
+        self._tool_registry = ToolRegistry(registered_tools)
 
     def build_initial_bundle(self, message: IncomingChatMessage, session_info: ChatSessionInfo) -> ContextBundle:
         """基于当前消息和会话信息构建初始上下文包。"""

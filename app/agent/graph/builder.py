@@ -6,9 +6,10 @@ from langgraph.runtime import Runtime
 from app.agent.context.builder import ConversationContextBuilder
 from app.agent.context.budget import ContextMessageBudgeter
 from app.agent.context.formatter import ConversationContextFormatter
-from app.agent.graph.runtime import GraphRuntimeContext, LLMProvider
-from app.memory.service import ConversationMemoryService
-from app.services.web_search import ExaWebSearchService
+from app.agent.context.tools.history_tools.search_history import HistoryToolDefinition
+from app.agent.context.tools.models import RegisteredTool
+from app.agent.context.tools.web_search_tools.search_web import WebSearchToolDefinition
+from app.agent.graph.runtime import GraphRuntimeContext, GraphServices, LLMProvider
 
 from .constants import GraphNodes
 from .nodes.chat_model import chat_model_node
@@ -21,13 +22,13 @@ from .state import ReplyState
 
 def build_graph(
     llm_provider: LLMProvider,
-    conversation_memory_service: ConversationMemoryService,
-    web_search_service: ExaWebSearchService,
+    service: GraphServices,
 ):
     """构建按新工具链路组织的 LangGraph 主流程。"""
 
     # 在图外先准备好上下文构建、格式化和预算裁剪组件。
-    context_builder = ConversationContextBuilder(conversation_memory_service, web_search_service)
+    registered_tools = _build_tools(service)
+    context_builder = ConversationContextBuilder(service.conversation_memory_service, registered_tools)
     context_formatter = ConversationContextFormatter()
     context_budgeter = ContextMessageBudgeter(llm_provider.model())
     tool_registry = context_builder.get_tool_registry()
@@ -79,3 +80,12 @@ def build_graph(
     graph.add_edge(GraphNodes.EXECUTE_TOOLS.value, GraphNodes.CHAT_MODEL.value)
     # 编译并返回可执行图实例。
     return graph.compile()
+
+
+def _build_tools(
+    service: GraphServices,
+) -> tuple[RegisteredTool, ...]:
+    return (
+        HistoryToolDefinition.build(service.conversation_memory_service),
+        WebSearchToolDefinition.build(service.web_search_service),
+    )

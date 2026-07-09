@@ -2,11 +2,7 @@ from __future__ import annotations
 
 from langchain_core.tools import BaseTool
 
-from .history_tools.search_history import HistoryToolDefinition
 from .models import RegisteredTool, ToolCategory, ToolCategoryName, ToolCategorySelection
-from .web_search_tools.search_web import WebSearchToolDefinition
-from app.memory.service import ConversationMemoryService
-from app.services.web_search import ExaWebSearchService
 
 
 class ToolRegistry:
@@ -14,8 +10,7 @@ class ToolRegistry:
 
     def __init__(
         self,
-        conversation_memory_service: ConversationMemoryService,
-        web_search_service: ExaWebSearchService,
+        registered_tools: tuple[RegisteredTool, ...],
     ) -> None:
         # 用工具名做键保存全部工具。
         self._tools: dict[str, RegisteredTool] = {}
@@ -23,10 +18,9 @@ class ToolRegistry:
         self._category_names: dict[ToolCategoryName, tuple[str, ...]] = {}
         # 保存全部核心工具名。
         self._core_tool_names: tuple[str, ...] = ()
-        # 注册网页搜索工具。
-        self.register(WebSearchToolDefinition.build(web_search_service))
-        # 注册历史查询工具。
-        self.register(HistoryToolDefinition.build(conversation_memory_service))
+        # 把外部已经构建好的工具条目统一注册进来。
+        for registered_tool in registered_tools:
+            self.register(registered_tool)
 
     def register(self, registered_tool: RegisteredTool) -> None:
         """注册一个已经带完整元信息的工具条目。"""
