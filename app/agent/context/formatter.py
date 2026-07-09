@@ -14,37 +14,21 @@ class ConversationContextFormatter:
 
         # 系统提示词始终放在最前面。
         messages: list[BaseMessage] = [self._build_system_message(bundle)]
-        # 最近连续对话继续使用标准聊天消息形式。
-        messages.extend(self._build_recent_messages(bundle.recent_records))
         # 历史证据单独组织成参考块。
         evidence_message = self._build_evidence_message(bundle.evidence_blocks)
         # 有历史证据时再拼进去。
         if evidence_message is not None:
             messages.append(evidence_message)
+        messages.extend(self._build_recent_messages(bundle.recent_records))
         # 当前用户消息固定放在最后。
         messages.append(self._build_current_message(bundle))
         # 返回最终消息序列。
         return tuple(messages)
 
     def _build_system_message(self, bundle: ContextBundle) -> SystemMessage:
-        """构建系统提示和会话摘要消息。"""
+        """构建系统提示消息。"""
 
-        # 先放系统提示词正文。
-        lines = [bundle.system_prompt.strip()]
-        # 再补当前会话摘要标题。
-        lines.append("当前会话信息：")
-        # 写入平台类型。
-        lines.append(f"- 平台：{bundle.session_snapshot.im_type}")
-        # 写入会话类型。
-        lines.append(f"- 会话类型：{bundle.session_snapshot.chat_type}")
-        # 有首次回复时间时就补进去。
-        if bundle.session_snapshot.first_reply_time is not None:
-            lines.append(f"- 首次回复时间：{bundle.session_snapshot.first_reply_time.isoformat()}")
-        # 有最近回复时间时也补进去。
-        if bundle.session_snapshot.latest_reply_time is not None:
-            lines.append(f"- 最近回复时间：{bundle.session_snapshot.latest_reply_time.isoformat()}")
-        # 返回系统消息对象。
-        return SystemMessage(content="\n".join(lines))
+        return SystemMessage(content=bundle.system_prompt.strip())
 
     def _build_recent_messages(self, recent_records: tuple[MemoryRecord, ...]) -> list[BaseMessage]:
         """把最近消息记录转换成标准聊天消息列表。"""
