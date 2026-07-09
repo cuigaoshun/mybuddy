@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from langgraph.graph import END, START, StateGraph
-from langchain_core.runnables import RunnableConfig
 from langgraph.runtime import Runtime
 
 from app.agent.context.builder import ConversationContextBuilder
@@ -50,10 +49,9 @@ def build_graph(
 
     def execute_tools_graph_node(
         state: ReplyState,
-        config: RunnableConfig,
         runtime: Runtime,
     ) -> ReplyState:
-        return execute_tools_node(state=state, context=runtime_context, config=config, runtime=runtime)
+        return execute_tools_node(state=state, context=runtime_context, runtime=runtime)
 
     # 创建以 ReplyState 为统一状态结构的 LangGraph。
     graph = StateGraph(ReplyState)

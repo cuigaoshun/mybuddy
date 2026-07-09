@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from langchain_core.runnables import RunnableConfig
 from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.prebuilt import ToolNode
 from langgraph.runtime import Runtime
@@ -13,7 +12,6 @@ from ..state import ReplyState
 def execute_tools_node(
     state: ReplyState,
     context: GraphRuntimeContext,
-    config: RunnableConfig,
     runtime: Runtime,
 ) -> ReplyState:
     # 只在最后一条消息确实是 AI tool_call 回复时才继续执行工具。
@@ -24,7 +22,7 @@ def execute_tools_node(
     allowed_tool_names = _build_allowed_tool_names(state=state, context=context)
     # 基于当前允许执行的工具集合构造 ToolNode，让 ToolRuntime 自动注入当前图状态。
     tool_node = ToolNode(_build_allowed_tools(context=context, allowed_tool_names=allowed_tool_names))
-    result = tool_node.invoke(state, config=config, runtime=runtime)
+    result = tool_node.invoke(state, runtime=runtime)
     outputs = _extract_tool_messages(result)
     # 本轮没有任何工具真正执行时，直接保持原状态返回。
     if not outputs:
