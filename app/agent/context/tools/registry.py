@@ -49,11 +49,6 @@ class ToolRegistry:
 
         return self._tools[name].tool
 
-    def list(self) -> list[BaseTool]:
-        """返回全部已注册工具对象。"""
-
-        return [registered_tool.tool for registered_tool in self._tools.values()]
-
     def get_tools(self, names: list[str] | tuple[str, ...]) -> list[BaseTool]:
         """按工具名集合批量返回工具对象。"""
 
@@ -84,28 +79,10 @@ class ToolRegistry:
         # 返回去重后的大类集合。
         return tuple(categories.values())
 
-    def list_tool_categories(self) -> tuple[ToolCategory, ...]:
-        """返回全部工具大类信息。"""
-
-        categories: dict[str, ToolCategory] = {}
-        for registered_tool in self._tools.values():
-            categories[registered_tool.category.name] = registered_tool.category
-        return tuple(categories.values())
-
-    def list_registered_tools(self) -> tuple[RegisteredTool, ...]:
-        """返回全部已注册工具条目。"""
-
-        return tuple(self._tools.values())
-
     def list_category_tool_names(self, category_name: ToolCategoryName) -> tuple[str, ...]:
         """返回某个工具大类下的工具名集合。"""
 
         return self._category_names.get(category_name, ())
-
-    def list_category_tools(self, category_name: ToolCategoryName) -> list[BaseTool]:
-        """返回某个工具大类下的工具对象集合。"""
-
-        return self.get_tools(self.list_category_tool_names(category_name))
 
     def list_categories_tool_names(self, category_names: ToolCategorySelection) -> tuple[str, ...]:
         """返回多个工具大类合并后的工具名集合。"""
@@ -121,16 +98,3 @@ class ToolRegistry:
         """返回多个工具大类合并后的工具对象集合。"""
 
         return self.get_tools(self.list_categories_tool_names(category_names))
-
-    def get_category(self, category_name: ToolCategoryName) -> ToolCategory | None:
-        """按大类名返回工具大类信息。"""
-
-        for registered_tool in self._tools.values():
-            if registered_tool.category.name == category_name:
-                return registered_tool.category
-        return None
-
-    def read_tool_prompt_hint(self, name: str) -> str:
-        """读取某个工具的 prompt_hint。"""
-
-        return self._tools[name].prompt_hint
