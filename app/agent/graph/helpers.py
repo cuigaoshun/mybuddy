@@ -33,6 +33,6 @@ def build_chat_messages(state: ReplyState, context: GraphRuntimeContext) -> list
     # 先把结构化上下文格式化成完整消息序列。
     formatted_messages = list(context.context_formatter.format(state.context_bundle))
     # 再根据模型上下文预算裁剪消息总长度。
-    trimmed_messages = context.context_budgeter.trim_messages(tuple(formatted_messages))
+    # trimmed_messages = context.context_budgeter.trim_messages(tuple(formatted_messages))
     # 返回可继续追加和传递的消息列表。
-    return list(trimmed_messages)
+    return list(formatted_messages)

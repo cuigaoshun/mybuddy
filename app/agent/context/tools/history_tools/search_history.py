@@ -1,18 +1,11 @@
-from __future__ import annotations
-
-from contextvars import ContextVar, Token
-from typing import Any
-
 from langchain_core.tools import tool
+from langchain.tools import ToolRuntime
 
 from app.agent.context.tools.models import RegisteredTool, ToolDefinition
 from app.memory.models import ConversationHistoryQuery, HistorySearchResult
 from app.memory.service import ConversationMemoryService
 
 from .models import HISTORY_TOOLS_CATEGORY, SearchHistoryToolInput, parse_tool_datetime
-
-# 保存当前图状态，供历史检索工具读取当前会话信息。
-CURRENT_REPLY_STATE: ContextVar[Any | None] = ContextVar("current_reply_state", default=None)
 
 
 class HistoryToolDefinition(ToolDefinition):
@@ -24,17 +17,15 @@ class HistoryToolDefinition(ToolDefinition):
 
         @tool("search_history", args_schema=SearchHistoryToolInput)
         def search_history_tool(
+            runtime: ToolRuntime,
             text: str = "",
             start_time: str | None = None,
             end_time: str | None = None,
         ) -> str:
             """查询当前会话指定时间范围内的历史消息，可结合关键词与语义召回。"""
 
-            # 读取当前图状态。
-            state = CURRENT_REPLY_STATE.get()
-            # 缺少状态时无法知道用户和会话信息。
-            if state is None:
-                return "当前缺少会话状态，无法执行历史查询。"
+            # 直接从 ToolRuntime 读取当前图状态。
+            state = runtime.state
             # 基于当前会话执行历史检索。
             search_results = tuple(
                 conversation_memory_service.search_history(
@@ -61,18 +52,6 @@ class HistoryToolDefinition(ToolDefinition):
             is_core=True,
             tool=search_history_tool,
         )
-
-
-def bind_history_tool_state(state: object) -> Token[Any | None]:
-    """把当前图状态绑定到历史检索工具的上下文里。"""
-
-    return CURRENT_REPLY_STATE.set(state)
-
-
-def reset_history_tool_state(token: Token[Any | None]) -> None:
-    """在工具执行完之后恢复历史检索工具的上下文状态。"""
-
-    CURRENT_REPLY_STATE.reset(token)
 
 
 def _format_history_results(results: tuple[HistorySearchResult, ...]) -> str:

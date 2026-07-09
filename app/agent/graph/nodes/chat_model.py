@@ -69,7 +69,7 @@ def _handle_selector_reply(
             update={
                 "messages": tuple([*messages, reply]),
                 "selected_tool_category": None,
-                **_build_selector_status_update(should_reenter_chat_model=False),
+                **_build_selector_status_update(state=state, should_reenter_chat_model=False),
             }
         )
     # 没有 tool_call 时，说明 selector 阶段可以直接给用户自然语言回复。
@@ -78,7 +78,7 @@ def _handle_selector_reply(
         return state.model_copy(
             update={
                 "final_reply": direct_reply_text,
-                **_build_selector_status_update(should_reenter_chat_model=False),
+                **_build_selector_status_update(state=state, should_reenter_chat_model=False),
             }
         )
     # 其余情况说明当前轮没有工具也没有直接回复，按安全兜底结束 selector 阶段。
@@ -124,7 +124,7 @@ def _apply_selector_command(state: ReplyState, selector_command: Command | None)
         return state.model_copy(
             update={
                 "selected_tool_category": None,
-                **_build_selector_status_update(should_reenter_chat_model=True),
+                **_build_selector_status_update(state=state, should_reenter_chat_model=True),
             }
         )
     # 读取 selector 工具给出的状态更新内容。
@@ -134,19 +134,23 @@ def _apply_selector_command(state: ReplyState, selector_command: Command | None)
         return state.model_copy(
             update={
                 "selected_tool_category": None,
-                **_build_selector_status_update(should_reenter_chat_model=True),
+                **_build_selector_status_update(state=state, should_reenter_chat_model=True),
             }
         )
     # 正常情况下合并 selector 的选择结果，并通知 router 立即回到 chat_model。
     updated_state = {
         **command_update,
-        **_build_selector_status_update(should_reenter_chat_model=True),
+        **_build_selector_status_update(state=state, should_reenter_chat_model=True),
     }
     return state.model_copy(update=updated_state)
 
 
-def _build_selector_status_update(should_reenter_chat_model: bool) -> dict[str, bool]:
+def _build_selector_status_update(
+    state: ReplyState,
+    should_reenter_chat_model: bool,
+) -> dict[str, bool | int]:
     return {
         "selector_resolved": True,
         "selector_pending_chat_model": should_reenter_chat_model,
+        "tool_round": state.tool_round + 1,
     }
