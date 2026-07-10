@@ -49,25 +49,25 @@ def build_graph(
     )
 
     # 下面这些局部包装函数只负责把运行时上下文闭包进具体 node 调用里。
-    def load_recent_graph_node(state: ReplyState) -> ReplyState:
+    def load_recent_graph_node(state: ReplyState) -> dict[str, object]:
         return load_recent_node(state=state, context=runtime_context)
 
-    def retrieve_memory_graph_node(state: ReplyState) -> ReplyState:
+    def retrieve_memory_graph_node(state: ReplyState) -> dict[str, object]:
         return retrieve_memory_node(state=state, context=runtime_context)
 
-    def rerank_memory_graph_node(state: ReplyState) -> ReplyState:
+    def rerank_memory_graph_node(state: ReplyState) -> dict[str, object]:
         return rerank_memory_node(state=state, context=runtime_context)
 
-    def assemble_context_graph_node(state: ReplyState) -> ReplyState:
+    def assemble_context_graph_node(state: ReplyState) -> dict[str, object]:
         return assemble_context_node(state=state, context=runtime_context)
 
-    def chat_model_graph_node(state: ReplyState) -> ReplyState:
+    def chat_model_graph_node(state: ReplyState) -> dict[str, object]:
         return chat_model_node(state=state, context=runtime_context)
 
     def execute_tools_graph_node(
         state: ReplyState,
         runtime: Runtime,
-    ) -> ReplyState:
+    ) -> dict[str, object]:
         return execute_tools_node(state=state, context=runtime_context, runtime=runtime)
 
     # 创建以 ReplyState 为统一状态结构的 LangGraph。
