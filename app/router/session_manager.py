@@ -8,7 +8,7 @@ from app.event.models import IncomingChatMessage
 from app.memory.models import ASSISTANT_MESSAGE_TYPE, ChatSessionInfo, TEXT_CONTENT_TYPE, USER_MESSAGE_TYPE, MemoryRecord
 from app.memory.service import ConversationMemoryService
 from app.memory.session_info_service import ChatSessionInfoService
-from app.services.im_sender import SentMessageResult
+from app.services.im_sender.models import SentMessageResult
 
 
 class MessageSender(Protocol):

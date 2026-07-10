@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from app.event.models import IncomingChatMessage
 from app.memory.models import ChatSessionInfo
+from app.router.session_manager import ChatAgent
 
 from .state import ReplyState
 
 
-class GraphChatAgent:
+class GraphChatAgent(ChatAgent):
     """基于 LangGraph 的聊天 Agent 封装。"""
 
     def __init__(

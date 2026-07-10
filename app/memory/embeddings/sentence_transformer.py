@@ -1,23 +1,17 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Protocol
+from typing import Final
 
-EMBEDDING_MODEL_NAME = "BAAI/bge-base-zh-v1.5"
-QUERY_INSTRUCTION = "为这个句子生成表示以用于检索相关文章："
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-LOCAL_EMBEDDING_MODEL_PATH = PROJECT_ROOT / "model" / "baai"
+from app.memory.embeddings.base import EmbeddingProvider
 
-
-class EmbeddingProvider(Protocol):
-    def embed_document(self, text: str) -> list[float]:
-        ...
-
-    def embed_query(self, text: str) -> list[float]:
-        ...
+EMBEDDING_MODEL_NAME: Final[str] = "BAAI/bge-base-zh-v1.5"
+QUERY_INSTRUCTION: Final[str] = "为这个句子生成表示以用于检索相关文章："
+PROJECT_ROOT: Final[Path] = Path(__file__).resolve().parents[3]
+LOCAL_EMBEDDING_MODEL_PATH: Final[Path] = PROJECT_ROOT / "model" / "baai"
 
 
-class SentenceTransformerEmbeddingProvider:
+class SentenceTransformerEmbeddingProvider(EmbeddingProvider):
     def __init__(self, model_name: str = EMBEDDING_MODEL_NAME) -> None:
         from sentence_transformers import SentenceTransformer
 
@@ -26,11 +20,9 @@ class SentenceTransformerEmbeddingProvider:
         self._model_name = model_name
 
     def embed_document(self, text: str) -> list[float]:
-        # BGE v1.5 官方推荐：passage/document 侧不加 query instruction。
         return self._encode(text)
 
     def embed_query(self, text: str) -> list[float]:
-        # BGE v1.5 官方推荐：检索 query 侧加 instruction，以提升 s2p 检索效果。
         normalized_text = text.strip()
         if not normalized_text:
             return self._encode(normalized_text)
@@ -44,7 +36,6 @@ class SentenceTransformerEmbeddingProvider:
 
 
 def _resolve_model_path(model_name: str) -> str:
-    # 优先使用仓库内置模型目录，避免 IDE/脚本因工作目录不同找不到相对路径。
     if LOCAL_EMBEDDING_MODEL_PATH.exists():
         return str(LOCAL_EMBEDDING_MODEL_PATH)
 
@@ -52,5 +43,4 @@ def _resolve_model_path(model_name: str) -> str:
     if candidate_path.exists():
         return str(candidate_path.resolve())
 
-    # 本地目录不存在时，回退到传入的模型名，允许走 HuggingFace 仓库名加载。
     return model_name

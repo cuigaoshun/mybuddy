@@ -9,11 +9,12 @@ from lark_oapi.api.im.v1 import CreateMessageRequest, CreateMessageRequestBody
 
 from app.core.config import FeishuConfig
 from app.event.models import IM_TYPE_FEISHU
+from app.router.session_manager import MessageSender
 from app.services.im_sender.errors import SendMessageError
 from app.services.im_sender.models import SentMessageResult
 
 
-class FeishuMessageSender:
+class FeishuMessageSender(MessageSender):
     """飞书消息发送实现，负责封装飞书 SDK 调用细节。"""
 
     def __init__(self, config: FeishuConfig) -> None:
