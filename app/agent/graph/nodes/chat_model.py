@@ -10,7 +10,7 @@ from app.agent.util import extract_reply_text
 from ..state import ReplyState
 
 
-def chat_model_node(state: ReplyState, context: GraphRuntimeContext) -> ReplyState:
+def chat_model_node(state: ReplyState, context: GraphRuntimeContext) -> dict[str, object]:
     # 先构建当前轮真正送给模型的消息序列。
     messages = _build_chat_messages(state, context)
     # 再根据当前状态决定本轮要绑定哪些工具。
@@ -24,14 +24,12 @@ def chat_model_node(state: ReplyState, context: GraphRuntimeContext) -> ReplySta
     updated_messages = tuple([*messages, reply])
     # 只有没有 tool_call 时，当前轮才算拿到最终自然语言回复。
     final_reply = None if getattr(reply, "tool_calls", None) else extract_reply_text(reply)
-    return state.model_copy(
-        update={
-            "messages": updated_messages,
-            "final_reply": final_reply,
-            # 常规回复轮次不需要再强制 router 回到 chat_model。
-            "selector_pending_chat_model": False,
-        }
-    )
+    return {
+        "messages": updated_messages,
+        "final_reply": final_reply,
+        # 常规回复轮次不需要再强制 router 回到 chat_model。
+        "selector_pending_chat_model": False,
+    }
 
 
 def _has_non_selector_tool_call(reply: AIMessage) -> bool:
@@ -95,7 +93,7 @@ def _handle_selector_reply(
     context: GraphRuntimeContext,
     messages,
     reply,
-) -> ReplyState:
+) -> dict[str, object]:
     """处理 selector 阶段的模型回复，并把状态推进到下一步。"""
 
     # 基于当前非核心工具类别构造 selector 工具实例。
@@ -106,22 +104,18 @@ def _handle_selector_reply(
         return _apply_selector_command(state=state, selector_command=selector_command)
     # 如果 selector 阶段已经直接命中核心工具，就按核心工具分支继续走。
     if _has_non_selector_tool_call(reply):
-        return state.model_copy(
-            update={
-                "messages": tuple([*messages, reply]),
-                "selected_tool_category": None,
-                **_build_selector_status_update(state=state, should_reenter_chat_model=False),
-            }
-        )
+        return {
+            "messages": tuple([*messages, reply]),
+            "selected_tool_category": None,
+            **_build_selector_status_update(state=state, should_reenter_chat_model=False),
+        }
     # 没有 tool_call 时，说明 selector 阶段可以直接给用户自然语言回复。
     direct_reply_text = _extract_direct_reply_text(reply)
     if direct_reply_text is not None:
-        return state.model_copy(
-            update={
-                "final_reply": direct_reply_text,
-                **_build_selector_status_update(state=state, should_reenter_chat_model=False),
-            }
-        )
+        return {
+            "final_reply": direct_reply_text,
+            **_build_selector_status_update(state=state, should_reenter_chat_model=False),
+        }
     # 其余情况说明当前轮没有工具也没有直接回复，按安全兜底结束 selector 阶段。
     return _apply_selector_command(state=state, selector_command=None)
 
@@ -172,33 +166,29 @@ def _invoke_selector_tool(selector_tool, reply) -> Command | None:
     return None
 
 
-def _apply_selector_command(state: ReplyState, selector_command: Command | None) -> ReplyState:
+def _apply_selector_command(state: ReplyState, selector_command: Command | None) -> dict[str, object]:
     """把 selector 工具返回的 Command 合并回图状态。"""
 
     # 没拿到合法 Command 时，回退成“selector 已完成，但未开放非核心工具”的状态。
     if selector_command is None:
-        return state.model_copy(
-            update={
-                "selected_tool_category": None,
-                **_build_selector_status_update(state=state, should_reenter_chat_model=True),
-            }
-        )
+        return {
+            "selected_tool_category": None,
+            **_build_selector_status_update(state=state, should_reenter_chat_model=True),
+        }
     # 读取 selector 工具给出的状态更新内容。
     command_update = getattr(selector_command, "update", None)
     # update 结构不合法时，也退回到只开放核心工具的安全状态。
     if not isinstance(command_update, dict):
-        return state.model_copy(
-            update={
-                "selected_tool_category": None,
-                **_build_selector_status_update(state=state, should_reenter_chat_model=True),
-            }
-        )
+        return {
+            "selected_tool_category": None,
+            **_build_selector_status_update(state=state, should_reenter_chat_model=True),
+        }
     # 正常情况下合并 selector 的选择结果，并通知 router 立即回到 chat_model。
     updated_state = {
         **command_update,
         **_build_selector_status_update(state=state, should_reenter_chat_model=True),
     }
-    return state.model_copy(update=updated_state)
+    return updated_state
 
 
 def _build_selector_status_update(

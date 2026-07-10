@@ -6,17 +6,15 @@ from app.memory.models import RetrievedMemoryHit
 from ..state import ReplyState
 
 
-def rerank_memory_node(state: ReplyState, context: GraphRuntimeContext) -> ReplyState:
+def rerank_memory_node(state: ReplyState, context: GraphRuntimeContext) -> dict[str, object]:
     """对长期记忆命中结果做轻量重排，并只保留当前轮最重要的候选。"""
 
     # 当前阶段先用简单排序策略：按 score 倒序取前三。
     reranked_memory_hits = _select_top_memory_hits(state.retrieved_memory_hits)
-    return state.model_copy(
-        update={
-            # 把重排后的候选写回状态，供后续 assemble_context 节点消费。
-            "reranked_memory_hits": reranked_memory_hits,
-        }
-    )
+    return {
+        # 把重排后的候选写回状态，供后续 assemble_context 节点消费。
+        "reranked_memory_hits": reranked_memory_hits,
+    }
 
 
 def _select_top_memory_hits(

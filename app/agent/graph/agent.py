@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.event.models import IncomingChatMessage
 from app.memory.models import ChatSessionInfo
-from app.router.session_manager import ChatAgent
+from app.router.contracts import ChatAgent
 
 from .state import ReplyState
 

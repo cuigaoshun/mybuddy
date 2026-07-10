@@ -1,26 +1,12 @@
 from __future__ import annotations
 
-from typing import Protocol
-
 from loguru import logger
 
 from app.event.models import IncomingChatMessage
 from app.memory.models import ASSISTANT_MESSAGE_TYPE, ChatSessionInfo, TEXT_CONTENT_TYPE, USER_MESSAGE_TYPE, MemoryRecord
 from app.memory.service import ConversationMemoryService
 from app.memory.session_info_service import ChatSessionInfoService
-from app.services.im_sender.models import SentMessageResult
-
-
-class MessageSender(Protocol):
-    """统一发送消息协议，向路由层屏蔽具体 IM 实现。"""
-
-    def send_text(self, chat_id: str, text: str) -> SentMessageResult:
-        ...
-
-
-class ChatAgent(Protocol):
-    def generate_reply(self, message: IncomingChatMessage, session_info: ChatSessionInfo) -> str | None:
-        ...
+from .contracts import ChatAgent, MessageSender
 
 
 class SessionManager:

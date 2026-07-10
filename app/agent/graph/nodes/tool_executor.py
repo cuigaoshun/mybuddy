@@ -13,7 +13,7 @@ def execute_tools_node(
     state: ReplyState,
     context: GraphRuntimeContext,
     runtime: Runtime,
-) -> ReplyState:
+) -> dict[str, object]:
     # 只在最后一条消息确实是 AI tool_call 回复时才继续执行工具。
     last_message = state.messages[-1] if state.messages else None
     if not isinstance(last_message, AIMessage):
@@ -26,13 +26,11 @@ def execute_tools_node(
     outputs = _extract_tool_messages(result)
     # 本轮没有任何工具真正执行时，直接保持原状态返回。
     if not outputs:
-        return state
-    return state.model_copy(
-        update={
-            "messages": tuple([*state.messages, *outputs]),
-            "tool_round": state.tool_round + 1,
-        }
-    )
+        return {}
+    return {
+        "messages": tuple([*state.messages, *outputs]),
+        "tool_round": state.tool_round + 1,
+    }
 
 
 def _build_allowed_tool_names(state: ReplyState, context: GraphRuntimeContext) -> set[str]:

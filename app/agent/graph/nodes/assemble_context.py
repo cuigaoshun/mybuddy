@@ -8,7 +8,7 @@ from app.memory.models import MemoryRecord, RetrievedMemoryHit
 from ..state import ReplyState
 
 
-def assemble_context_node(state: ReplyState, context: GraphRuntimeContext) -> ReplyState:
+def assemble_context_node(state: ReplyState, context: GraphRuntimeContext) -> dict[str, object]:
     """把最近对话与长期记忆证据组装成最终 ContextBundle。"""
 
     # 先记录最近对话里已经出现过的消息 ID，避免长期记忆窗口展开后与 recent 重复。
@@ -27,27 +27,25 @@ def assemble_context_node(state: ReplyState, context: GraphRuntimeContext) -> Re
     )
     # 把展开后的原始消息记录转成统一证据块，并做去重整理。
     evidence_blocks = _deduplicate_evidence(_convert_memory_records_to_evidence(similar_records))
-    return state.model_copy(
-        update={
-            # 在这里一次性组装最终 ContextBundle，后续 chat_model 只消费这一份结构化上下文。
-            "context_bundle": ContextBundle(
-                system_prompt=SYSTEM_PROMPT,
-                current_message=state.message,
-                # 会话快照用于补充模型对当前关系与会话状态的基本理解。
-                session_snapshot=ContextSessionSnapshot(
-                    chat_id=state.session_info.chat_id,
-                    chat_type=state.message.chat_type,
-                    im_type=state.session_info.im_type,
-                    first_reply_time=state.session_info.first_reply_time,
-                    latest_reply_time=state.session_info.latest_reply_time,
-                ),
-                # 最近连续对话仍按标准聊天消息参与主上下文。
-                recent_records=state.recent_records,
-                # 长期记忆证据则作为参考片段单独组织。
-                evidence_blocks=evidence_blocks,
+    return {
+        # 在这里一次性组装最终 ContextBundle，后续 chat_model 只消费这一份结构化上下文。
+        "context_bundle": ContextBundle(
+            system_prompt=SYSTEM_PROMPT,
+            current_message=state.message,
+            # 会话快照用于补充模型对当前关系与会话状态的基本理解。
+            session_snapshot=ContextSessionSnapshot(
+                chat_id=state.session_info.chat_id,
+                chat_type=state.message.chat_type,
+                im_type=state.session_info.im_type,
+                first_reply_time=state.session_info.first_reply_time,
+                latest_reply_time=state.session_info.latest_reply_time,
             ),
-        }
-    )
+            # 最近连续对话仍按标准聊天消息参与主上下文。
+            recent_records=state.recent_records,
+            # 长期记忆证据则作为参考片段单独组织。
+            evidence_blocks=evidence_blocks,
+        ),
+    }
 
 
 def _convert_memory_records_to_evidence(records: tuple[MemoryRecord, ...]) -> list[ContextEvidenceBlock]:

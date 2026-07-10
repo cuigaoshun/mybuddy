@@ -9,7 +9,7 @@ from lark_oapi.api.im.v1 import CreateMessageRequest, CreateMessageRequestBody
 
 from app.core.config import FeishuConfig
 from app.event.models import IM_TYPE_FEISHU
-from app.router.session_manager import MessageSender
+from app.router.contracts import MessageSender
 from app.services.im_sender.errors import SendMessageError
 from app.services.im_sender.models import SentMessageResult
 
