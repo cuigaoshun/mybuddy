@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.agent.context.builder import ConversationContextBuilder
 from app.agent.context.budget import ContextMessageBudgeter
 from app.agent.context.formatter import ConversationContextFormatter
 from app.agent.context.tools.registry import ToolRegistry
@@ -29,8 +28,7 @@ class GraphRuntimeContext:
 
     # 提供图内统一使用的基础模型访问入口。
     llm_provider: LLMProvider
-    # 负责把当前消息和会话信息组装成上下文总包。
-    context_builder: ConversationContextBuilder
+    services: GraphServices
     # 负责把结构化上下文格式化成模型消息序列。
     context_formatter: ConversationContextFormatter
     # 负责按模型上下文预算裁剪消息长度。

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Collection, Protocol
 
-from app.memory.models import ChatSessionInfo, MemoryRecord
+from app.memory.models import ChatSessionInfo, MemoryRecord, RetrievedMemoryHit
 
 
 class ConversationMemoryRepository(Protocol):
@@ -30,6 +30,19 @@ class ConversationMemoryRepository(Protocol):
         end_time: datetime | None = None,
         exclude_message_ids: Collection[str] | None = None,
     ) -> list[MemoryRecord]:
+        ...
+
+    def search_similar_hits_by_user(
+        self,
+        user_id: str,
+        im_type: str,
+        chat_id: str,
+        query_vector: list[float],
+        limit: int,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        exclude_message_ids: Collection[str] | None = None,
+    ) -> list[RetrievedMemoryHit]:
         ...
 
     def search_text_by_user(

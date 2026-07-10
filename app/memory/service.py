@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Collection
 
 from app.memory.embeddings import EmbeddingProvider
-from app.memory.models import ConversationHistoryQuery, HistorySearchResult, MemoryRecord
+from app.memory.models import ConversationHistoryQuery, HistorySearchResult, MemoryRecord, RetrievedMemoryHit
 from app.memory.repositories import ConversationMemoryRepository
 
 
@@ -44,13 +44,40 @@ class ConversationMemoryService:
         limit: int,
         exclude_message_ids: Collection[str] | None = None,
     ) -> list[MemoryRecord]:
-        """用当前用户问题召回 top-k 命中，并展开每条命中的前后相邻消息。"""
+        matched_records = self.retrieve_memory_hits(
+            user_id=user_id,
+            im_type=im_type,
+            chat_id=chat_id,
+            query_text=query_text,
+            limit=limit,
+            exclude_message_ids=exclude_message_ids,
+        )
+        if not matched_records:
+            return []
+
+        return self.expand_memory_hits(
+            user_id=user_id,
+            im_type=im_type,
+            chat_id=chat_id,
+            hits=matched_records,
+            exclude_message_ids=exclude_message_ids,
+        )
+
+    def retrieve_memory_hits(
+        self,
+        user_id: str,
+        im_type: str,
+        chat_id: str,
+        query_text: str,
+        limit: int,
+        exclude_message_ids: Collection[str] | None = None,
+    ) -> list[RetrievedMemoryHit]:
         recent_question = query_text.strip()
         if not recent_question:
             return []
 
         embedding = self._embedding_provider.embed_query(recent_question)
-        matched_records = self._repository.search_similar_by_user(
+        return self._repository.search_similar_hits_by_user(
             user_id=user_id,
             im_type=im_type,
             chat_id=chat_id,
@@ -58,10 +85,16 @@ class ConversationMemoryService:
             limit=limit,
             exclude_message_ids=exclude_message_ids,
         )
-        if not matched_records:
-            return []
 
-        matched_message_ids = [record.message_id for record in matched_records]
+    def expand_memory_hits(
+        self,
+        user_id: str,
+        im_type: str,
+        chat_id: str,
+        hits: Collection[RetrievedMemoryHit],
+        exclude_message_ids: Collection[str] | None = None,
+    ) -> list[MemoryRecord]:
+        matched_message_ids = [hit.record.message_id for hit in hits]
         return self._repository.list_message_windows_by_message_ids(
             user_id=user_id,
             im_type=im_type,

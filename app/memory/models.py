@@ -25,6 +25,12 @@ class MemoryRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class RetrievedMemoryHit:
+    record: MemoryRecord
+    score: float
+
+
+@dataclass(frozen=True, slots=True)
 class ChatSessionInfo:
     """会话详情模型，承载会话级元信息与租约状态。"""
 

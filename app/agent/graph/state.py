@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict
 from app.agent.context.models import ContextBundle
 from app.agent.context.tools.models import ToolCategorySelection
 from app.event.models import IncomingChatMessage
-from app.memory.models import ChatSessionInfo
+from app.memory.models import ChatSessionInfo, MemoryRecord, RetrievedMemoryHit
 
 
 class ReplyState(BaseModel):
@@ -19,6 +19,9 @@ class ReplyState(BaseModel):
     message: IncomingChatMessage
     # 当前消息所属的会话信息。
     session_info: ChatSessionInfo
+    recent_records: tuple[MemoryRecord, ...] = ()
+    retrieved_memory_hits: tuple[RetrievedMemoryHit, ...] = ()
+    reranked_memory_hits: tuple[RetrievedMemoryHit, ...] = ()
     # 当前轮已经构建好的上下文总包。
     context_bundle: ContextBundle | None = None
     # 当前轮真正送进模型的消息序列，以及模型/工具回写后的消息累计。
