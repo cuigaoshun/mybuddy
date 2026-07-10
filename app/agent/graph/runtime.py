@@ -28,6 +28,7 @@ class GraphRuntimeContext:
 
     # 提供图内统一使用的基础模型访问入口。
     llm_provider: LLMProvider
+    # 把图所需的业务服务整体打包进来，供各节点按需读取具体服务。
     services: GraphServices
     # 负责把结构化上下文格式化成模型消息序列。
     context_formatter: ConversationContextFormatter
@@ -41,5 +42,7 @@ class GraphRuntimeContext:
 class GraphServices:
     """图装配阶段需要的业务服务聚合。"""
 
+    # 负责最近消息读取、记忆召回与记忆窗口展开。
     conversation_memory_service: ConversationMemoryService
+    # 负责公开网页搜索能力，供工具节点或工具定义使用。
     web_search_service: ExaWebSearchService
