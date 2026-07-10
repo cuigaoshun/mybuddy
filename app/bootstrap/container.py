@@ -12,8 +12,7 @@ from app.core.config import ExaConfig, LlmConfig
 from app.event.bus import EventBus
 from app.gateway.dispatch import FeishuDispatcher
 from app.memory.embeddings import SentenceTransformerEmbeddingProvider
-from app.memory.postgres_repository import PostgresConversationMemoryRepository
-from app.memory.postgres_session_info_repository import PostgresChatSessionInfoRepository
+from app.memory.postgres import PostgresChatSessionInfoRepository, PostgresConversationMemoryRepository
 from app.memory.service import ConversationMemoryService
 from app.memory.session_info_service import ChatSessionInfoService
 from app.router.session_manager import SessionManager

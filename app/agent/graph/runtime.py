@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.agent.context.budget import ContextMessageBudgeter
-from app.agent.context.formatter import ConversationContextFormatter
+from app.agent.context.tool import ContextTool
 from app.agent.context.tools.registry import ToolRegistry
 from app.memory.service import ConversationMemoryService
 from app.services.llm import ChatModel
@@ -30,10 +29,8 @@ class GraphRuntimeContext:
     llm_provider: LLMProvider
     # 把图所需的业务服务整体打包进来，供各节点按需读取具体服务。
     services: GraphServices
-    # 负责把结构化上下文格式化成模型消息序列。
-    context_formatter: ConversationContextFormatter
-    # 负责按模型上下文预算裁剪消息长度。
-    context_budgeter: ContextMessageBudgeter
+    # 聚合上下文格式化与预算控制能力，避免 runtime 顶层字段继续膨胀。
+    context_tool: ContextTool
     # 统一提供核心工具与动态工具类别查询能力。
     tool_registry: ToolRegistry
 

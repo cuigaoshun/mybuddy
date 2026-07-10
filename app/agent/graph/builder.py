@@ -5,6 +5,7 @@ from langgraph.runtime import Runtime
 
 from app.agent.context.budget import ContextMessageBudgeter
 from app.agent.context.formatter import ConversationContextFormatter
+from app.agent.context.tool import ContextTool
 from app.agent.context.tools.history_tools.search_history import HistoryToolDefinition
 from app.agent.context.tools.models import RegisteredTool
 from app.agent.context.tools.registry import ToolRegistry
@@ -35,14 +36,15 @@ def build_graph(
     context_formatter = ConversationContextFormatter()
     # 创建消息预算裁剪器，后续如果恢复裁剪逻辑可直接复用。
     context_budgeter = ContextMessageBudgeter(llm_provider.model())
+    # 把上下文格式化和预算控制能力统一收口成一个运行时工具对象。
+    context_tool = ContextTool(formatter=context_formatter, budgeter=context_budgeter)
     # 基于已注册工具构造统一 registry，避免节点层重复拼工具集合。
     tool_registry = ToolRegistry(registered_tools)
     # 把所有节点共享依赖统一收敛到运行时上下文里，避免节点层重复装配。
     runtime_context = GraphRuntimeContext(
         llm_provider=llm_provider,
         services=service,
-        context_formatter=context_formatter,
-        context_budgeter=context_budgeter,
+        context_tool=context_tool,
         tool_registry=tool_registry,
     )
 

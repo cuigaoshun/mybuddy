@@ -64,7 +64,7 @@ def _build_chat_messages(state: ReplyState, context: GraphRuntimeContext) -> lis
     if state.context_bundle is None:
         return [HumanMessage(content=state.message.text)]
     # 先把结构化上下文格式化成完整消息序列。
-    formatted_messages = list(context.context_formatter.format(state.context_bundle))
+    formatted_messages = list(context.context_tool.formatter.format(state.context_bundle))
     # 这里先直接返回格式化结果，后续如果恢复预算裁剪可在这里插入。
     return list(formatted_messages)
 
