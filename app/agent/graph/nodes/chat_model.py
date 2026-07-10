@@ -1,22 +1,22 @@
 from __future__ import annotations
 
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langgraph.types import Command
 
 from app.agent.context.tools.selector import build_category_selector_tool
 from app.agent.graph.runtime import GraphRuntimeContext
 from app.agent.util import extract_reply_text
 
-from ..helpers import build_chat_messages, has_non_selector_tool_call, invoke_model
 from ..state import ReplyState
 
 
 def chat_model_node(state: ReplyState, context: GraphRuntimeContext) -> ReplyState:
     # 先构建当前轮真正送给模型的消息序列。
-    messages = build_chat_messages(state, context)
+    messages = _build_chat_messages(state, context)
     # 再根据当前状态决定本轮要绑定哪些工具。
     model = _build_chat_model(state=state, context=context)
     # 调模型拿到本轮回复。
-    reply = invoke_model(model=model, messages=messages)
+    reply = _invoke_model(model=model, messages=messages)
     # 只要当前轮仍处于 selector 阶段，或再次调用了 selector 工具，就统一走 selector 分支处理。
     if _should_handle_selector_reply(state=state, reply=reply):
         return _handle_selector_reply(state=state, context=context, messages=messages, reply=reply)
@@ -32,6 +32,27 @@ def chat_model_node(state: ReplyState, context: GraphRuntimeContext) -> ReplySta
             "selector_pending_chat_model": False,
         }
     )
+
+
+def _has_non_selector_tool_call(reply: AIMessage) -> bool:
+    for tool_call in getattr(reply, "tool_calls", []) or []:
+        tool_name = tool_call.get("name")
+        if isinstance(tool_name, str) and tool_name != "select_tool_category":
+            return True
+    return False
+
+
+def _invoke_model(model, messages: list[BaseMessage]) -> AIMessage:
+    return model.invoke(messages)
+
+
+def _build_chat_messages(state: ReplyState, context: GraphRuntimeContext) -> list[BaseMessage]:
+    if state.messages:
+        return list(state.messages)
+    if state.context_bundle is None:
+        return [HumanMessage(content=state.message.text)]
+    formatted_messages = list(context.context_formatter.format(state.context_bundle))
+    return list(formatted_messages)
 
 
 def _build_chat_model(state: ReplyState, context: GraphRuntimeContext):
@@ -64,7 +85,7 @@ def _handle_selector_reply(
     if selector_command is not None:
         return _apply_selector_command(state=state, selector_command=selector_command)
     # 如果 selector 阶段已经直接命中核心工具，就按核心工具分支继续走。
-    if has_non_selector_tool_call(reply):
+    if _has_non_selector_tool_call(reply):
         return state.model_copy(
             update={
                 "messages": tuple([*messages, reply]),
