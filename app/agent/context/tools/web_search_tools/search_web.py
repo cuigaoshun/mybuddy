@@ -49,9 +49,6 @@ def _format_web_search_results(results: tuple[WebSearchResult, ...]) -> str:
         rank_text = str(index)
         # 每条结果至少展示标题。
         detail_parts = [f"标题：{result.title}"]
-        # 有域名时补上站点字段。
-        if result.domain:
-            detail_parts.append(f"站点：{result.domain}")
         # 有链接时补上链接字段。
         if result.url:
             detail_parts.append(f"链接：{result.url}")
