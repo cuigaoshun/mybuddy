@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from app.agent.context.models import ContextBundle, ContextEvidenceBlock, ContextSessionSnapshot
+from app.agent.context.models import ContextBundle, ContextEvidenceBlock, ContextSessionSnapshot, \
+    ContextUserMemorySnapshot
 from app.agent.context.system_prompt import SYSTEM_PROMPT
 from app.agent.graph.runtime import GraphRuntimeContext
-from app.memory.models import MemoryRecord, RetrievedMemoryHit
-
+from app.memory.models import MemoryRecord, UserMemory
 from ..state import ReplyState
 
 
@@ -40,6 +40,7 @@ def assemble_context_node(state: ReplyState, context: GraphRuntimeContext) -> di
                 first_reply_time=state.session_info.first_reply_time,
                 latest_reply_time=state.session_info.latest_reply_time,
             ),
+            user_memory_snapshot=_build_user_memory_snapshot(state.user_memory),
             # 最近连续对话仍按标准聊天消息参与主上下文。
             recent_records=state.recent_records,
             # 长期记忆证据则作为参考片段单独组织。
@@ -73,6 +74,22 @@ def _convert_memory_records_to_evidence(records: tuple[MemoryRecord, ...]) -> li
         )
     # 返回全部可用证据块。
     return evidence_blocks
+
+
+def _build_user_memory_snapshot(user_memory: UserMemory | None) -> ContextUserMemorySnapshot:
+    """把用户级长期记忆转换成上下文可消费的快照。"""
+
+    return ContextUserMemorySnapshot(
+        long_term_memory_summary=_normalize_summary(user_memory.long_term_memory_summary) if user_memory is not None else None,
+        user_profile=user_memory.user_profile if user_memory is not None else None,
+    )
+
+
+def _normalize_summary(summary: str | None) -> str | None:
+    if summary is None:
+        return None
+    normalized_summary = summary.strip()
+    return normalized_summary or None
 
 
 def _deduplicate_evidence(

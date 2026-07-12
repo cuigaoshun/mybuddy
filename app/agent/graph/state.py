@@ -7,7 +7,7 @@ from app.agent.context.models import ContextBundle
 from app.agent.context.tools.models import ToolCategorySelection
 from app.agent.graph.constants import ToolPhase
 from app.event.models import IncomingChatMessage
-from app.memory.models import ChatSessionInfo, MemoryRecord, RetrievedMemoryHit
+from app.memory.models import ChatSessionInfo, MemoryRecord, RetrievedMemoryHit, UserMemory
 
 
 class ReplyState(BaseModel):
@@ -21,6 +21,7 @@ class ReplyState(BaseModel):
     # 当前消息所属的会话信息。
     session_info: ChatSessionInfo
     recent_records: tuple[MemoryRecord, ...] = ()
+    user_memory: UserMemory | None = None
     retrieved_memory_hits: tuple[RetrievedMemoryHit, ...] = ()
     reranked_memory_hits: tuple[RetrievedMemoryHit, ...] = ()
     # 当前轮已经构建好的上下文总包。

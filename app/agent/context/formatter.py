@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
+
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 
-from app.agent.context.models import ContextBundle, ContextEvidenceBlock
-from app.memory.models import ASSISTANT_MESSAGE_TYPE, USER_MESSAGE_TYPE, MemoryRecord
+from app.agent.context.models import ContextBundle, ContextEvidenceBlock, ContextUserMemorySnapshot
+from app.memory.models import ASSISTANT_MESSAGE_TYPE, USER_MESSAGE_TYPE, MemoryRecord, UserMemoryProfile
 
 
 class ConversationContextFormatter:
@@ -14,6 +16,10 @@ class ConversationContextFormatter:
 
         # 系统提示词始终放在最前面。
         messages: list[BaseMessage] = [self._build_system_message(bundle)]
+        user_memory_message = self._build_user_memory_message(bundle.user_memory_snapshot)
+        if user_memory_message is not None:
+            messages.append(user_memory_message)
+        messages.append(self._build_runtime_context_message(bundle))
         # 历史证据单独组织成参考块。
         evidence_message = self._build_evidence_message(bundle.evidence_blocks)
         # 有历史证据时再拼进去。
@@ -34,6 +40,37 @@ class ConversationContextFormatter:
         """把最近消息记录转换成标准聊天消息列表。"""
 
         return [self._record_to_message(record) for record in recent_records]
+
+    def _build_runtime_context_message(self, bundle: ContextBundle) -> SystemMessage:
+        """构建运行时上下文消息。"""
+
+        current_time_text = bundle.current_message.message_time.isoformat()
+        return SystemMessage(
+            content=(
+                f"当前 IM 平台类型：{bundle.session_snapshot.im_type}\n"
+                f"当前时间：{current_time_text}"
+            )
+        )
+
+    def _build_user_memory_message(self, snapshot: ContextUserMemorySnapshot | None) -> SystemMessage | None:
+        """把用户级长期记忆快照转换成系统参考消息。"""
+
+        if snapshot is None:
+            return None
+        lines: list[str] = []
+        if snapshot.long_term_memory_summary:
+            lines.append(f"长期记忆摘要：{snapshot.long_term_memory_summary}")
+        if snapshot.user_profile is not None:
+            lines.append("用户长期属性：")
+            lines.append(self._format_user_profile(snapshot.user_profile))
+        if not lines:
+            return None
+        return SystemMessage(content="\n".join(lines))
+
+    def _format_user_profile(self, user_profile: UserMemoryProfile) -> str:
+        """把结构化用户画像格式化为模型可读 JSON。"""
+
+        return json.dumps(user_profile.to_dict(), ensure_ascii=False, sort_keys=True)
 
     def _build_evidence_message(self, evidence_blocks: tuple[ContextEvidenceBlock, ...]) -> SystemMessage | None:
         """把历史证据块转换成系统参考消息。"""

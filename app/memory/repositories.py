@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Collection, Protocol
 
-from app.memory.models import ChatSessionInfo, MemoryRecord, RetrievedMemoryHit
+from app.memory.models import ChatSessionInfo, MemoryRecord, RetrievedMemoryHit, UserMemory
 
 
 class ConversationMemoryRepository(Protocol):
@@ -104,4 +104,9 @@ class ChatSessionInfoRepository(Protocol):
         latest_reply_time: datetime | None = None,
         clear_lease_owner: str | None = None,
     ) -> None:
+        ...
+
+
+class UserMemoryRepository(Protocol):
+    def get_by_user(self, user_id: str, im_type: str) -> UserMemory | None:
         ...

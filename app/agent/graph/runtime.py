@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from app.agent.context.tool import ContextTool
 from app.agent.context.tools.registry import ToolRegistry
 from app.memory.service import ConversationMemoryService
+from app.memory.user_memory_service import UserMemoryService
 from app.services.llm import ChatModel
 from app.services.web_search import ExaWebSearchService
 
@@ -41,5 +42,7 @@ class GraphServices:
 
     # 负责最近消息读取、记忆召回与记忆窗口展开。
     conversation_memory_service: ConversationMemoryService
+    # 负责读取用户级长期记忆快照。
+    user_memory_service: UserMemoryService
     # 负责公开网页搜索能力，供工具节点或工具定义使用。
     web_search_service: ExaWebSearchService

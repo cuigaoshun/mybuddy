@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Final
 
@@ -41,6 +41,89 @@ class ChatSessionInfo:
     latest_reply_time: datetime | None = None
     lease_owner: str | None = None
     lease_until: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class UserMemoryAttribute:
+    """用户属性中的一条键值项。"""
+
+    key: str
+    value: str | bool | int | float
+
+
+@dataclass(frozen=True, slots=True)
+class UserMemoryAttributes:
+    """一组结构化用户属性。"""
+
+    items: tuple[UserMemoryAttribute, ...] = ()
+
+    def to_dict(self) -> dict[str, str | bool | int | float]:
+        return {item.key: item.value for item in self.items}
+
+
+@dataclass(frozen=True, slots=True)
+class UserMemoryAffinity:
+    """用户与 Agent 关系中的好感度结构。"""
+
+    level: int | None = None
+    confidence: float | None = None
+    updated_at: datetime | None = None
+    notes: str | None = None
+
+    def to_dict(self) -> dict[str, object]:
+        payload: dict[str, object] = {}
+        if self.level is not None:
+            payload["level"] = self.level
+        if self.confidence is not None:
+            payload["confidence"] = self.confidence
+        if self.notes:
+            payload["notes"] = self.notes
+        return payload
+
+
+@dataclass(frozen=True, slots=True)
+class UserMemoryRelationship:
+    """用户与 Agent 的关系状态。"""
+
+    affinity: UserMemoryAffinity | None = None
+
+    def to_dict(self) -> dict[str, object]:
+        payload: dict[str, object] = {}
+        if self.affinity is not None:
+            affinity_payload = self.affinity.to_dict()
+            if affinity_payload:
+                payload["affinity"] = affinity_payload
+        return payload
+
+
+@dataclass(frozen=True, slots=True)
+class UserMemoryProfile:
+    """结构化用户画像。"""
+
+    profile: UserMemoryAttributes = field(default_factory=UserMemoryAttributes)
+    preferences: UserMemoryAttributes = field(default_factory=UserMemoryAttributes)
+    relationship: UserMemoryRelationship = field(default_factory=UserMemoryRelationship)
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "profile": self.profile.to_dict(),
+            "preferences": self.preferences.to_dict(),
+            "relationship": self.relationship.to_dict(),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class UserMemory:
+    """用户级长期记忆快照。"""
+
+    user_id: str
+    im_type: str
+    long_term_memory_summary: str | None
+    user_profile: UserMemoryProfile
+    last_processed_message_id: str | None
+    version: int
+    created_at: datetime
+    updated_at: datetime
 
 
 @dataclass(frozen=True, slots=True)

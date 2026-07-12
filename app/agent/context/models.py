@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from app.event.models import IncomingChatMessage
-from app.memory.models import MemoryRecord
+from app.memory.models import MemoryRecord, UserMemoryProfile
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,6 +38,14 @@ class ContextSessionSnapshot:
 
 
 @dataclass(frozen=True, slots=True)
+class ContextUserMemorySnapshot:
+    """表示供模型消费的用户级长期记忆快照。"""
+
+    long_term_memory_summary: str | None
+    user_profile: UserMemoryProfile | None
+
+
+@dataclass(frozen=True, slots=True)
 class ContextBundle:
     """表示一次回复生成过程中完整的上下文输入包。"""
 
@@ -47,6 +55,8 @@ class ContextBundle:
     current_message: IncomingChatMessage
     # 会话的轻量快照信息。
     session_snapshot: ContextSessionSnapshot
+    # 用户级长期记忆快照。
+    user_memory_snapshot: ContextUserMemorySnapshot | None
     # 最近连续对话记录，按时间线供模型直接参考。
     recent_records: tuple[MemoryRecord, ...]
     # 预先召回出的历史证据块。
