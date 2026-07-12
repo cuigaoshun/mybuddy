@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from enum import Enum
+from typing import Final
+
+SELECT_TOOL_CATEGORY_TOOL_NAME: Final[str] = "select_tool_category"
 
 
 class GraphNodes(str, Enum):
@@ -12,6 +15,9 @@ class GraphNodes(str, Enum):
     ASSEMBLE_CONTEXT = "assemble_context"
     # 主模型节点，负责 selector 决策、常规推理与下一轮工具选择。
     CHAT_MODEL = "chat_model"
+    # selector 结果消费节点：专门处理 select_tool_category，
+    # 负责应用工具大类选择、剥离 selector 调用，并把真实工具调用继续留给执行节点。
+    APPLY_TOOL_SELECTION = "apply_tool_selection"
     # 统一工具执行节点，对应当前轮允许执行的核心工具与动态工具集合。
     EXECUTE_TOOLS = "execute_tools"
     # 图内路由层使用的结束标记，再由 builder 映射到 LangGraph 内置 END。
