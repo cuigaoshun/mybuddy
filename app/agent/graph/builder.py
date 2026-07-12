@@ -18,10 +18,9 @@ from .nodes.chat_model import chat_model_node
 from .nodes.load_recent import load_recent_node
 from .nodes.rerank_memory import rerank_memory_node
 from .nodes.retrieve_memory import retrieve_memory_node
-from .nodes.tool_selection import apply_tool_selection_node
 from .nodes.tool_executor import execute_tools_node
 
-from .routes import route_after_chat_model, route_after_tool_selection
+from .routes import route_after_chat_model
 from .state import ReplyState
 
 
@@ -65,9 +64,6 @@ def build_graph(
     def chat_model_graph_node(state: ReplyState) -> dict[str, object]:
         return chat_model_node(state=state, context=runtime_context)
 
-    def apply_tool_selection_graph_node(state: ReplyState) -> dict[str, object]:
-        return apply_tool_selection_node(state=state, context=runtime_context)
-
     def execute_tools_graph_node(
         state: ReplyState,
         runtime: Runtime,
@@ -86,10 +82,6 @@ def build_graph(
     graph.add_node(GraphNodes.ASSEMBLE_CONTEXT.value, assemble_context_graph_node)
     # 注册主模型调用节点。
     graph.add_node(GraphNodes.CHAT_MODEL.value, chat_model_graph_node)
-    # 注册 selector 结果消费节点。
-    # 这个节点专门负责把 selector 从真实工具执行链里剥离出去，
-    # 并在 mixed 场景下保留同条回复里的真实工具调用继续流向 execute_tools。
-    graph.add_node(GraphNodes.APPLY_TOOL_SELECTION.value, apply_tool_selection_graph_node)
     # 注册统一工具执行节点。
     graph.add_node(GraphNodes.EXECUTE_TOOLS.value, execute_tools_graph_node)
     # 图开始后先并行读取最近消息。
@@ -107,19 +99,6 @@ def build_graph(
         GraphNodes.CHAT_MODEL.value,
         route_after_chat_model,
         {
-            # selector 决策轮命中 selector 调用时，不直接去 execute_tools，而是先进入独立 selector node。
-            GraphNodes.APPLY_TOOL_SELECTION.value: GraphNodes.APPLY_TOOL_SELECTION.value,
-            GraphNodes.EXECUTE_TOOLS.value: GraphNodes.EXECUTE_TOOLS.value,
-            GraphNodes.END.value: END,
-        },
-    )
-    graph.add_conditional_edges(
-        GraphNodes.APPLY_TOOL_SELECTION.value,
-        route_after_tool_selection,
-        {
-            # selector-only 路径回 chat_model，mixed 路径进 execute_tools，
-            # 两条边都在 selector node 消费完 selector 之后再决定。
-            GraphNodes.CHAT_MODEL.value: GraphNodes.CHAT_MODEL.value,
             GraphNodes.EXECUTE_TOOLS.value: GraphNodes.EXECUTE_TOOLS.value,
             GraphNodes.END.value: END,
         },

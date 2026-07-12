@@ -66,7 +66,7 @@ def _extract_direct_reply_text(reply) -> str | None:
     """提取 selector 阶段直接给用户的自然语言回复文本。"""
 
     # 只要还有 tool_call，就说明当前回复不能视为直接自然语言结果。
-    if getattr(reply, "tool_calls", None):
+    if reply.tool_calls:
         return None
     # 统一抽取文本并裁掉前后空白。
     reply_text = extract_reply_text(reply).strip()
@@ -83,7 +83,7 @@ def _build_regular_reply_update(
     """构造常规聊天轮次的状态更新。"""
 
     updated_messages = tuple([*messages, reply])
-    final_reply = None if getattr(reply, "tool_calls", None) else extract_reply_text(reply)
+    final_reply = None if reply.tool_calls else extract_reply_text(reply)
     return {
         "messages": updated_messages,
         "final_reply": final_reply,

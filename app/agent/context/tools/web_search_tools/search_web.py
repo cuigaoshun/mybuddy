@@ -22,7 +22,7 @@ class WebSearchToolDefinition(ToolDefinition):
             # 调用网页搜索服务执行搜索。
             search_results = web_search_service.search(query=query, limit=limit)
             # 把搜索结果格式化成模型可阅读文本。
-            return _format_web_search_results(search_results, web_search_service.is_available())
+            return _format_web_search_results(search_results)
 
         # 直接返回带完整元信息的注册条目。
         return RegisteredTool(
@@ -35,12 +35,9 @@ class WebSearchToolDefinition(ToolDefinition):
         )
 
 
-def _format_web_search_results(results: tuple[WebSearchResult, ...], is_available: bool) -> str:
+def _format_web_search_results(results: tuple[WebSearchResult, ...]) -> str:
     """把网页搜索结果格式化成模型可阅读文本。"""
 
-    # 没配置 Exa 时直接给出显式提示。
-    if not is_available:
-        return "当前未配置 Exa API Key，暂时无法执行网页搜索。"
     # 没查到结果时返回空结果文案。
     if not results:
         return "未找到相关网页结果。"
@@ -49,7 +46,7 @@ def _format_web_search_results(results: tuple[WebSearchResult, ...], is_availabl
     # 再按顺序逐条展开搜索结果。
     for index, result in enumerate(results, start=1):
         # 优先使用搜索服务返回的 rank，否则回退到遍历序号。
-        rank_text = str(result.rank) if result.rank is not None else str(index)
+        rank_text = str(index)
         # 每条结果至少展示标题。
         detail_parts = [f"标题：{result.title}"]
         # 有域名时补上站点字段。
