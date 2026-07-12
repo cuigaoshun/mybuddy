@@ -17,7 +17,7 @@ def execute_tools_node(
     # 只在最后一条消息确实是 AI tool_call 回复时才继续执行工具。
     last_message = state.messages[-1] if state.messages else None
     if not isinstance(last_message, AIMessage):
-        return state
+        return {}
     # 当前轮允许执行的工具集合 = 核心工具 + 当前已开放的动态工具集合。
     allowed_tool_names = _build_allowed_tool_names(state=state, context=context)
     # 基于当前允许执行的工具集合构造 ToolNode，让 ToolRuntime 自动注入当前图状态。

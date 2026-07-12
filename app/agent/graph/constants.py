@@ -16,3 +16,14 @@ class GraphNodes(str, Enum):
     EXECUTE_TOOLS = "execute_tools"
     # 图内路由层使用的结束标记，再由 builder 映射到 LangGraph 内置 END。
     END = "end"
+
+
+class ToolPhase(str, Enum):
+    """统一表达当前工具选择流程所处阶段。"""
+
+    # 当前轮仍在等待 selector 决策或重选工具大类。
+    AWAIT_SELECTOR = "await_selector"
+    # selector 已完成，下一跳需要先回 chat_model 基于新工具集再生成一轮。
+    AWAIT_POST_SELECTOR_CHAT = "await_post_selector_chat"
+    # 当前不处于 selector 决策轮，按常规回复/工具执行流程继续。
+    IDLE = "idle"

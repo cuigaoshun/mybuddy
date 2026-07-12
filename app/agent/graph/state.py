@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict
 
 from app.agent.context.models import ContextBundle
 from app.agent.context.tools.models import ToolCategorySelection
+from app.agent.graph.constants import ToolPhase
 from app.event.models import IncomingChatMessage
 from app.memory.models import ChatSessionInfo, MemoryRecord, RetrievedMemoryHit
 
@@ -28,13 +29,11 @@ class ReplyState(BaseModel):
     messages: tuple[BaseMessage, ...] = ()
     # 当前轮已选中的非核心工具大类集合；为空时表示后续只允许核心工具。
     selected_tool_category: ToolCategorySelection | None = None
-    # 标记当前对话是否已经完成 selector 阶段，避免每轮都重新绑定 selector 工具。
-    selector_resolved: bool = False
-    # 标记 selector 刚完成且需要 router 立即再回到 chat_model 跑下一轮。
-    selector_pending_chat_model: bool = False
+    # 当前工具流程所处阶段：等待 selector、selector 完成后回 chat_model，或常规空闲阶段。
+    tool_phase: ToolPhase = ToolPhase.AWAIT_SELECTOR
     # 如果已经拿到最终自然语言回复，就写在这里并结束图。
     final_reply: str | None = None
     # 当前已经跑了多少轮工具回路。
     tool_round: int = 0
     # 允许的最大工具回路次数，用于避免无限循环。
-    max_tool_rounds: int = 3
+    max_tool_rounds: int = 10
