@@ -4,7 +4,7 @@ import time
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
-from app.memory.models import ChatSessionInfo
+from app.memory.models import ChatSessionInfo, PendingMemorySession
 from app.memory.repositories import ChatSessionInfoRepository
 
 # 单次回复租约的有效期，超过该时间后允许其他请求重新竞争租约。
@@ -60,3 +60,6 @@ class ChatSessionInfoService:
             latest_reply_time=latest_reply_time,
             clear_lease_owner=clear_lease_owner,
         )
+
+    def list_sessions_pending_memory_processing(self, limit: int = 20) -> list[PendingMemorySession]:
+        return self._repository.list_sessions_pending_memory_processing(limit=limit)

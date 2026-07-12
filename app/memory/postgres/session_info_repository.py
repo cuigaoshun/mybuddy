@@ -6,7 +6,7 @@ from sqlalchemy import BigInteger, Column, DateTime, Identity, Index, MetaData, 
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Engine
 
-from app.memory.models import ChatSessionInfo
+from app.memory.models import ChatSessionInfo, PendingMemorySession
 from app.memory.repositories import ChatSessionInfoRepository
 
 CHAT_SESSION_INFO_SCHEMA = "public"
@@ -162,6 +162,33 @@ class PostgresChatSessionInfoRepository(ChatSessionInfoRepository):
 
         with self._engine.begin() as connection:
             connection.execute(statement)
+
+    def list_sessions_pending_memory_processing(self, limit: int) -> list[PendingMemorySession]:
+        statement = (
+            select(
+                self._table.c.user_id,
+                self._table.c.im_type,
+                self._table.c.chat_id,
+                self._table.c.latest_reply_time,
+            )
+            .where(self._table.c.latest_reply_time.is_not(None))
+            .order_by(self._table.c.latest_reply_time, self._table.c.id)
+            .limit(limit)
+        )
+
+        with self._engine.begin() as connection:
+            rows = connection.execute(statement).mappings().all()
+
+        return [
+            PendingMemorySession(
+                user_id=row["user_id"],
+                im_type=row["im_type"],
+                chat_id=row["chat_id"],
+                latest_reply_time=row["latest_reply_time"],
+            )
+            for row in rows
+            if row["latest_reply_time"] is not None
+        ]
 
 
 def _normalize_optional_time(value: datetime | None) -> datetime | None:

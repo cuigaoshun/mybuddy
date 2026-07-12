@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from sqlalchemy import BigInteger, Column, DateTime, Identity, Integer, MetaData, Table, Text, select
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, insert
 from sqlalchemy.engine import Engine
 
 from app.memory.models import UserMemory, UserMemoryAffinity, UserMemoryAttribute, UserMemoryAttributes, UserMemoryProfile, UserMemoryRelationship
@@ -65,6 +65,31 @@ class PostgresUserMemoryRepository(UserMemoryRepository):
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )
+
+    def save(self, user_memory: UserMemory) -> None:
+        statement = insert(self._table).values(
+            user_id=user_memory.user_id,
+            im_type=user_memory.im_type,
+            long_term_memory_summary=user_memory.long_term_memory_summary,
+            user_profile_json=user_memory.user_profile.to_dict(),
+            last_processed_message_id=user_memory.last_processed_message_id,
+            version=user_memory.version,
+            created_at=user_memory.created_at,
+            updated_at=user_memory.updated_at,
+        )
+        statement = statement.on_conflict_do_update(
+            index_elements=["user_id", "im_type"],
+            set_={
+                "long_term_memory_summary": user_memory.long_term_memory_summary,
+                "user_profile_json": user_memory.user_profile.to_dict(),
+                "last_processed_message_id": user_memory.last_processed_message_id,
+                "version": user_memory.version,
+                "updated_at": user_memory.updated_at,
+            },
+        )
+
+        with self._engine.begin() as connection:
+            connection.execute(statement)
 
 
 def _parse_user_memory_profile(payload: dict[str, object]) -> UserMemoryProfile:

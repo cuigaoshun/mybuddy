@@ -127,6 +127,16 @@ class UserMemory:
 
 
 @dataclass(frozen=True, slots=True)
+class PendingMemorySession:
+    """待做长期记忆整理的会话。"""
+
+    user_id: str
+    im_type: str
+    chat_id: str
+    latest_reply_time: datetime
+
+
+@dataclass(frozen=True, slots=True)
 class ConversationHistoryQuery:
     """历史消息查询条件。"""
 

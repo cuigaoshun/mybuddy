@@ -103,6 +103,22 @@ class ConversationMemoryService:
             exclude_message_ids=exclude_message_ids,
         )
 
+    def list_messages_after_message_id(
+        self,
+        user_id: str,
+        im_type: str,
+        chat_id: str,
+        after_message_id: str | None,
+        limit: int,
+    ) -> list[MemoryRecord]:
+        return self._repository.list_after_message_id(
+            user_id=user_id,
+            im_type=im_type,
+            chat_id=chat_id,
+            after_message_id=after_message_id,
+            limit=limit,
+        )
+
     def search_history(self, query: ConversationHistoryQuery) -> list[HistorySearchResult]:
         """按文本与时间范围查询历史消息，支持词法与向量联合召回。"""
         normalized_query = _normalize_history_query(query)

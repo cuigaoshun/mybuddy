@@ -432,6 +432,80 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
             for row in rows
         ]
 
+    def list_after_message_id(
+        self,
+        user_id: str,
+        im_type: str,
+        chat_id: str,
+        after_message_id: str | None,
+        limit: int,
+    ) -> list[MemoryRecord]:
+        cursor_statement = None
+        if after_message_id is not None:
+            cursor_statement = (
+                select(
+                    self._table.c.message_time.label("cursor_message_time"),
+                    self._table.c.id.label("cursor_id"),
+                )
+                .where(
+                    self._table.c.user_id == user_id,
+                    self._table.c.im_type == im_type,
+                    self._table.c.chat_id == chat_id,
+                    self._table.c.message_id == after_message_id,
+                )
+                .order_by(desc(self._table.c.id))
+                .limit(1)
+            )
+
+        with self._engine.begin() as connection:
+            cursor_row = connection.execute(cursor_statement).mappings().one_or_none() if cursor_statement is not None else None
+
+        statement = (
+            select(
+                self._table.c.user_id,
+                self._table.c.chat_id,
+                self._table.c.message_id,
+                self._table.c.type,
+                self._table.c.im_type,
+                self._table.c.message_time,
+                self._table.c.content_type,
+                self._table.c.content,
+                self._table.c.id,
+            )
+            .where(
+                self._table.c.user_id == user_id,
+                self._table.c.im_type == im_type,
+                self._table.c.chat_id == chat_id,
+            )
+            .order_by(self._table.c.message_time, self._table.c.id)
+            .limit(limit)
+        )
+        if cursor_row is not None:
+            statement = statement.where(
+                (self._table.c.message_time > cursor_row["cursor_message_time"])
+                | (
+                    (self._table.c.message_time == cursor_row["cursor_message_time"])
+                    & (self._table.c.id > cursor_row["cursor_id"])
+                )
+            )
+
+        with self._engine.begin() as connection:
+            rows = connection.execute(statement).mappings().all()
+
+        return [
+            MemoryRecord(
+                user_id=row["user_id"],
+                chat_id=row["chat_id"],
+                message_id=row["message_id"],
+                message_type=row["type"],
+                im_type=row["im_type"],
+                message_time=row["message_time"],
+                content_type=row["content_type"],
+                content=row["content"],
+            )
+            for row in rows
+        ]
+
 
 def _normalize_message_time(message_time: datetime) -> datetime:
     """统一把消息时间转换为 UTC 时区时间。"""

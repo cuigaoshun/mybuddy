@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from dependency_injector import containers, providers
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from app.agent.graph.agent import GraphChatAgent
-from app.agent.graph.builder import build_graph
-from app.agent.graph.runtime import GraphServices, LLMProvider
+from app.agent.graph.main_graph import GraphChatAgent, build_graph
+from app.agent.graph.main_graph.runtime import GraphServices, LLMProvider
+from app.agent.graph.memory_graph import MemoryGraphServices, build_memory_graph
 from app.bootstrap.feishu import create_feishu_client
 from app.bootstrap.listener import Listener
 from app.bootstrap.postgres import get_engine
@@ -20,6 +21,7 @@ from app.router.session_manager import SessionManager
 from app.services.llm import create_chat_model
 from app.services.im_sender import FeishuMessageSender
 from app.services.web_search import ExaWebSearchService
+from app.workers.memory_scheduler import MemorySchedulerRunner
 
 
 class AppContainer(containers.DeclarativeContainer):
@@ -93,11 +95,23 @@ class AppContainer(containers.DeclarativeContainer):
         web_search_service=web_search_service,
     )
 
+    memory_graph_services = providers.Singleton(
+        MemoryGraphServices,
+        conversation_memory_service=conversation_memory_service,
+        chat_session_info_service=chat_session_info_service,
+        user_memory_service=user_memory_service,
+    )
+
     # 编译后的 LangGraph，应用生命周期内复用。
     agent_graph = providers.Singleton(
         build_graph,
         llm_provider=llm_provider,
         service=graph_services,
+    )
+
+    memory_graph = providers.Singleton(
+        build_memory_graph,
+        services=memory_graph_services,
     )
 
     # 聊天 Agent，负责把消息送进图并拿回最终回复。
@@ -126,3 +140,12 @@ class AppContainer(containers.DeclarativeContainer):
 
     # 监听器管理器，应用生命周期内复用。
     listener = providers.Singleton(Listener, container=__self__)
+
+    memory_scheduler = providers.Singleton(AsyncIOScheduler)
+
+    memory_scheduler_runner = providers.Singleton(
+        MemorySchedulerRunner,
+        scheduler=memory_scheduler,
+        chat_session_info_service=chat_session_info_service,
+        memory_graph=memory_graph,
+    )

@@ -38,8 +38,11 @@ async def lifespan(_: FastAPI):
     # 预编译 Agent Graph。
     container.agent_graph()
 
-    # 装配并启动监听器。
-    async with container.listener().start(_):
+    # 预编译长期记忆处理图。
+    container.memory_graph()
+
+    # 装配并启动监听器与后台调度器。
+    async with container.listener().start(_), container.memory_scheduler_runner().start(_):
         yield
 
 

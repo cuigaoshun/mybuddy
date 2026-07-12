@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Collection, Protocol
 
-from app.memory.models import ChatSessionInfo, MemoryRecord, RetrievedMemoryHit, UserMemory
+from app.memory.models import ChatSessionInfo, MemoryRecord, PendingMemorySession, RetrievedMemoryHit, UserMemory
 
 
 class ConversationMemoryRepository(Protocol):
@@ -80,6 +80,16 @@ class ConversationMemoryRepository(Protocol):
     ) -> list[MemoryRecord]:
         ...
 
+    def list_after_message_id(
+        self,
+        user_id: str,
+        im_type: str,
+        chat_id: str,
+        after_message_id: str | None,
+        limit: int,
+    ) -> list[MemoryRecord]:
+        ...
+
 
 class ChatSessionInfoRepository(Protocol):
     def get_session_info(self, user_id: str, im_type: str, chat_id: str) -> ChatSessionInfo:
@@ -106,7 +116,13 @@ class ChatSessionInfoRepository(Protocol):
     ) -> None:
         ...
 
+    def list_sessions_pending_memory_processing(self, limit: int) -> list[PendingMemorySession]:
+        ...
+
 
 class UserMemoryRepository(Protocol):
     def get_by_user(self, user_id: str, im_type: str) -> UserMemory | None:
+        ...
+
+    def save(self, user_memory: UserMemory) -> None:
         ...

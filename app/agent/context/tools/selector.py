@@ -4,7 +4,7 @@ from langchain_core.tools import BaseTool
 from langchain_core.tools import tool
 from langgraph.types import Command
 
-from app.agent.graph.constants import SELECT_TOOL_CATEGORY_TOOL_NAME
+from app.agent.graph.main_graph.constants import SELECT_TOOL_CATEGORY_TOOL_NAME
 
 from .models import SelectToolCategoryInput, ToolCategory, ToolCategoryName, ToolCategorySelection
 

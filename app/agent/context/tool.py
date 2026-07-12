@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.agent.context.budget import ContextMessageBudgeter
-from app.agent.context.formatter import ConversationContextFormatter
+from app.agent.context.main_graph.formatter import ConversationContextFormatter
 
 
 @dataclass(frozen=True)
