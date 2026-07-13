@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import BigInteger, Column, DateTime, Identity, Index, MetaData, Table, Text, and_, case, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
@@ -10,6 +10,7 @@ from app.memory.models import ChatSessionInfo, PendingMemorySession
 from app.memory.repositories import ChatSessionInfoRepository
 
 CHAT_SESSION_INFO_SCHEMA = "public"
+PENDING_MEMORY_PROCESSING_IDLE_MINUTES = 30
 
 
 class PostgresChatSessionInfoRepository(ChatSessionInfoRepository):
@@ -164,6 +165,7 @@ class PostgresChatSessionInfoRepository(ChatSessionInfoRepository):
             connection.execute(statement)
 
     def list_sessions_pending_memory_processing(self, limit: int) -> list[PendingMemorySession]:
+        pending_before = datetime.now(UTC) - timedelta(minutes=PENDING_MEMORY_PROCESSING_IDLE_MINUTES)
         statement = (
             select(
                 self._table.c.user_id,
@@ -171,7 +173,10 @@ class PostgresChatSessionInfoRepository(ChatSessionInfoRepository):
                 self._table.c.chat_id,
                 self._table.c.latest_reply_time,
             )
-            .where(self._table.c.latest_reply_time.is_not(None))
+            .where(
+                self._table.c.latest_reply_time.is_not(None),
+                self._table.c.latest_reply_time <= pending_before,
+            )
             .order_by(self._table.c.latest_reply_time, self._table.c.id)
             .limit(limit)
         )
