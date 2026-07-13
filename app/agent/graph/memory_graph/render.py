@@ -7,16 +7,18 @@ import sys
 sys.path.append(str(Path(__file__).resolve().parents[3]))
 
 from app.agent.graph.memory_graph.builder import build_memory_graph
+from app.agent.graph.main_graph.runtime import LLMProvider
 from app.agent.graph.memory_graph.runtime import MemoryGraphServices
 
 
 def build_memory_graph_png(
+    llm_provider: LLMProvider,
     services: MemoryGraphServices,
     output_path: str | Path | None = None,
 ) -> bytes:
     """基于依赖构建长期记忆处理图并导出 PNG，可选写入文件。"""
 
-    compiled_graph = build_memory_graph(services=services)
+    compiled_graph = build_memory_graph(llm_provider=llm_provider, services=services)
     png_bytes = compiled_graph.get_graph().draw_mermaid_png()
     if output_path is not None:
         output_file = Path(output_path)
@@ -45,6 +47,7 @@ if __name__ == "__main__":
 
     output_path = Path("./memory-graph.png")
     png_bytes = build_memory_graph_png(
+        llm_provider=container.llm_provider(),
         services=container.memory_graph_services(),
         output_path=output_path,
     )

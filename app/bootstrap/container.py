@@ -111,6 +111,7 @@ class AppContainer(containers.DeclarativeContainer):
 
     memory_graph = providers.Singleton(
         build_memory_graph,
+        llm_provider=llm_provider,
         services=memory_graph_services,
     )
 

@@ -3,27 +3,33 @@ from __future__ import annotations
 from langgraph.graph import END, START, StateGraph
 
 from app.agent.graph.memory_graph.nodes import extract_memory_node, load_conversation_node, merge_memory_node, save_memory_node, score_importance_node
-from app.agent.graph.memory_graph.runtime import MemoryGraphServices
+from app.agent.graph.main_graph.runtime import LLMProvider
+
+from app.agent.graph.memory_graph.runtime import MemoryGraphRuntimeContext, MemoryGraphServices
 from app.agent.graph.memory_graph.state import MemoryGraphState
 
 
-def build_memory_graph(services: MemoryGraphServices):
+def build_memory_graph(llm_provider: LLMProvider, services: MemoryGraphServices):
     graph = StateGraph(MemoryGraphState)
+    runtime_context = MemoryGraphRuntimeContext(
+        llm_provider=llm_provider,
+        services=services,
+    )
 
     def load_conversation_graph_node(state: MemoryGraphState) -> dict[str, object]:
-        return load_conversation_node(state=state, services=services)
+        return load_conversation_node(state=state, context=runtime_context)
 
     def extract_memory_graph_node(state: MemoryGraphState) -> dict[str, object]:
-        return extract_memory_node(state=state, services=services)
+        return extract_memory_node(state=state, context=runtime_context)
 
     def score_importance_graph_node(state: MemoryGraphState) -> dict[str, object]:
-        return score_importance_node(state=state, services=services)
+        return score_importance_node(state=state, context=runtime_context)
 
     def merge_memory_graph_node(state: MemoryGraphState) -> dict[str, object]:
-        return merge_memory_node(state=state, services=services)
+        return merge_memory_node(state=state, context=runtime_context)
 
     def save_memory_graph_node(state: MemoryGraphState) -> dict[str, object]:
-        return save_memory_node(state=state, services=services)
+        return save_memory_node(state=state, context=runtime_context)
 
     graph.add_node("load_conversation", load_conversation_graph_node)
     graph.add_node("extract_memory", extract_memory_graph_node)
