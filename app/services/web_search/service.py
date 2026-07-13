@@ -48,7 +48,9 @@ class ExaWebSearchService:
                     if normalized_highlight != "":
                         snippet = normalized_highlight
                         break
-            if title == "" and url == "":
+            if snippet == "" and item.text:
+                snippet = item.text.strip()[:200]
+            if title == "" or url == "" or snippet == "":
                 continue
             results.append(
                 WebSearchResult(
