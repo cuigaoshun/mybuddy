@@ -21,7 +21,6 @@ class MemorySchedulerRunner:
 
     @asynccontextmanager
     async def start(self, app: FastAPI):
-        pass
         app.state.memory_scheduler = self
         self.scheduler.add_job(
             self.scan_pending_sessions,
