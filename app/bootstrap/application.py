@@ -23,6 +23,7 @@ async def lifespan(_: FastAPI):
     config = init_config()
 
     container = AppContainer()
+    container.app_runtime_config.override(providers.Object(config.app))
     container.feishu_config.override(providers.Object(config.feishu))
     container.postgres_config.override(providers.Object(config.postgres))
     container.llm_config.override(providers.Object(config.llm))

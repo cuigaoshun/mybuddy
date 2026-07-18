@@ -8,6 +8,33 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 DEFAULT_CONFIG_PATH: Final[Path] = Path("config.toml")
 
+ENVIRONMENT_DEVELOPMENT: Final[str] = "dev"
+ENVIRONMENT_PRODUCTION: Final[str] = "prod"
+
+
+class AppRuntimeConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    env: str = ENVIRONMENT_DEVELOPMENT
+
+    @field_validator("env", mode="before")
+    @classmethod
+    def normalize_environment(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value
+
+    @field_validator("env")
+    @classmethod
+    def validate_environment(cls, value: str) -> str:
+        if value not in {ENVIRONMENT_DEVELOPMENT, ENVIRONMENT_PRODUCTION}:
+            raise ValueError("环境只能是 dev 或 prod")
+        return value
+
+    @property
+    def is_development(self) -> bool:
+        return self.env == ENVIRONMENT_DEVELOPMENT
+
 
 class FeishuConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
@@ -108,6 +135,7 @@ class ExaConfig(BaseModel):
 class AppConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
+    app: AppRuntimeConfig
     feishu: FeishuConfig
     postgres: PostgresConfig
     llm: LlmConfig
@@ -122,6 +150,9 @@ def init_config(config_path: Path = DEFAULT_CONFIG_PATH) -> AppConfig:
     )
 
     return AppConfig(
+        app=AppRuntimeConfig(
+            env=settings.get("app.env", ENVIRONMENT_DEVELOPMENT),
+        ),
         feishu=FeishuConfig(
             app_id=settings.get("feishu.app_id"),
             app_secret=settings.get("feishu.app_secret"),

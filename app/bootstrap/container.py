@@ -9,7 +9,7 @@ from app.agent.graph.memory_graph import MemoryGraphServices, build_memory_graph
 from app.bootstrap.feishu import create_feishu_client
 from app.bootstrap.listener import Listener
 from app.bootstrap.postgres import get_engine
-from app.core.config import ExaConfig, LlmConfig
+from app.core.config import AppRuntimeConfig, ExaConfig, LlmConfig
 from app.event.bus import EventBus
 from app.gateway.dispatch import FeishuDispatcher
 from app.memory.embeddings import SentenceTransformerEmbeddingProvider
@@ -28,6 +28,9 @@ class AppContainer(containers.DeclarativeContainer):
     """应用级依赖注入容器。"""
 
     __self__ = providers.Self()
+
+    # 飞书平台配置对象。
+    app_runtime_config = providers.Dependency(instance_of=AppRuntimeConfig)
 
     # 飞书平台配置对象。
     feishu_config = providers.Dependency()
@@ -79,7 +82,7 @@ class AppContainer(containers.DeclarativeContainer):
     )
 
     # 聊天模型客户端，应用生命周期内复用。
-    chat_model = providers.Singleton(create_chat_model, config=llm_config)
+    chat_model = providers.Singleton(create_chat_model, config=llm_config, runtime_config=app_runtime_config)
 
     # 图内模型提供者，统一暴露基础模型入口。
     llm_provider = providers.Singleton(LLMProvider, base_model=chat_model)

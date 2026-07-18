@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
-from app.core.config import LlmConfig
+from app.core.config import AppRuntimeConfig, LlmConfig
 from .llm_debug import DebugHandler
 
 StructuredSchema = TypeVar("StructuredSchema", bound=BaseModel)
@@ -37,11 +37,17 @@ class ChatModel(Protocol):
         ...
 
 
-def create_chat_model(config: LlmConfig) -> ChatOpenAI:
+def create_chat_model(config: LlmConfig, runtime_config: AppRuntimeConfig) -> ChatOpenAI:
     return ChatOpenAI(
         model=config.model,
         api_key=SecretStr(config.api_key),
         temperature=config.temperature,
         base_url=config.base_url,
-        callbacks=[DebugHandler()],
+        callbacks=_build_callbacks(runtime_config),
     )
+
+
+def _build_callbacks(runtime_config: AppRuntimeConfig) -> list[DebugHandler]:
+    if not runtime_config.is_development:
+        return []
+    return [DebugHandler()]
