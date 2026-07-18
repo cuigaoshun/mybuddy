@@ -86,6 +86,29 @@
 
 这意味着后续开发需要继续坚持一个原则：飞书 SDK 调用不要散落到各处业务模块，平台字段要尽早收敛成内部统一模型。
 
+## 当前用户 ID 映射方式
+
+当前实现已经把平台原始身份和系统内部 `user_id` 分开处理。
+
+1. `IncomingChatMessage` 同时携带 `third_party_user_id` 和系统 `user_id`；进入主链路前，`user_id` 先保持空字符串。
+2. 飞书入口会把 `open_id` 归一化为 `third_party_user_id`，但不会在 gateway 层直接访问数据库。
+3. `app/router/session_manager.py` 在主流程入口先根据 `(im_type, third_party_user_id)` 查询系统 `user_id`；如果不存在，则创建新的 UUID v7 `user_id`，同时写入 `users` 和 `user_external_identities`。
+4. 从进入主链路开始，`chat_memory`、`chat_session_info`、`user_memory`、历史检索和 Agent 上下文查询统一只使用系统 `user_id`。
+
+当前数据库侧新增了两张表：
+
+1. `users`：数据库内部自增主键 `id`，以及系统统一用户标识 `user_id UUID`。
+2. `user_external_identities`：保存 `user_id`、`im_type`、`third_party_user_id` 的对应关系，并对 `(im_type, third_party_user_id)` 建唯一约束，保证一个第三方 ID 只能绑定一个系统 `user_id`。
+
+这套实现的目的不是现在就扩展成多平台统一账号体系，而是先把“飞书原始身份”和“系统内部用户主键”解耦。即使当前一期仍然只接飞书，这个边界也能避免继续把平台字段直接写死进记忆和会话主键里。
+
+这个能力落地后，存储层仍然沿用当前仓库的边界：
+
+- `gateway/event` 负责把飞书字段归一化成内部消息模型，不直接处理数据库映射写入。
+- `router` 负责在主流程入口调用“查映射，不存在则创建”的能力。
+- `memory` 层新增映射仓储抽象及 PostgreSQL 实现，不把 SQL 细节暴露给 `router` 或 `agent`。
+- `agent`、历史工具和长期记忆流程统一依赖系统 `user_id`，不再从 `sender_id` 直接取用户主键。
+
 ## Agent、记忆与 RAG 的位置
 
 当前项目里，这几个核心能力的边界已经基本清楚：
@@ -116,8 +139,9 @@
 当前仓库已经体现出这个方向：
 
 - `app/memory/repositories.py` 定义了记忆仓储与会话信息仓储协议。
-- `app/memory/postgres_repository.py` 提供对话记忆的 PostgreSQL 实现。
-- `app/memory/postgres_session_info_repository.py` 提供会话信息的 PostgreSQL 实现。
+- `app/memory/postgres/conversation_repository.py` 提供对话记忆的 PostgreSQL 实现。
+- `app/memory/postgres/session_info_repository.py` 提供会话信息的 PostgreSQL 实现。
+- `app/memory/postgres/user_identity_repository.py` 提供第三方身份映射的 PostgreSQL 实现。
 
 这样做的原因很简单：陪伴型 Agent 的长期演进里，存储方案很可能变化。消息历史、长期记忆、向量检索、发送记录未来都可能拆开演化；如果业务逻辑一开始就写死在 SQL 和 PG 结构上，后面会非常难改。
 
@@ -133,8 +157,7 @@
 
 初始化脚本位于：
 
-- `scripts/init_chat_memory.sql`
-- `scripts/migrate_chat_memory_userid_to_user_id.sql`
+- `scripts/init_db.sql`
 
 当前代码默认使用 `public.chat_memory` 等表结构，数据库初始化通过手动执行 SQL 脚本完成，代码本身不负责自动建表。
 

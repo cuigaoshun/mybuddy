@@ -64,8 +64,8 @@ def _normalize_message(data: lark.im.v1.P2ImMessageReceiveV1) -> IncomingChatMes
     if not isinstance(text_value, str):
         return None
 
-    sender_id = data.event.sender.sender_id.open_id
-    if sender_id is None:
+    third_party_user_id = data.event.sender.sender_id.open_id
+    if third_party_user_id is None:
         return None
 
     message_time = _parse_feishu_message_time(message.create_time)
@@ -76,7 +76,7 @@ def _normalize_message(data: lark.im.v1.P2ImMessageReceiveV1) -> IncomingChatMes
         im_type=IM_TYPE_FEISHU,
         text=text_value.strip(),
         chat_id=message.chat_id,
-        sender_id=sender_id,
+        third_party_user_id=third_party_user_id,
         message_id=message.message_id,
         chat_type=message.chat_type,
         message_time=message_time,

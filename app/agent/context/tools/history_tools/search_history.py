@@ -33,7 +33,7 @@ class HistoryToolDefinition(ToolDefinition):
             search_results = tuple(
                 conversation_memory_service.search_history(
                     ConversationHistoryQuery(
-                        user_id=state.message.sender_id,
+                        user_id=state.message.user_id,
                         im_type=state.message.im_type,
                         chat_id=state.message.chat_id,
                         text=text,

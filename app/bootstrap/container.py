@@ -13,9 +13,15 @@ from app.core.config import AppRuntimeConfig, ExaConfig, LlmConfig
 from app.event.bus import EventBus
 from app.gateway.dispatch import FeishuDispatcher
 from app.memory.embeddings import SentenceTransformerEmbeddingProvider
-from app.memory.postgres import PostgresChatSessionInfoRepository, PostgresConversationMemoryRepository, PostgresUserMemoryRepository
+from app.memory.postgres import (
+    PostgresChatSessionInfoRepository,
+    PostgresConversationMemoryRepository,
+    PostgresUserIdentityRepository,
+    PostgresUserMemoryRepository,
+)
 from app.memory.service import ConversationMemoryService
 from app.memory.session_info_service import ChatSessionInfoService
+from app.memory.user_identity_service import UserIdentityService
 from app.memory.user_memory_service import UserMemoryService
 from app.router.session_manager import SessionManager
 from app.services.llm import create_chat_model
@@ -62,6 +68,9 @@ class AppContainer(containers.DeclarativeContainer):
     # 用户长期记忆 PostgreSQL 仓储。
     user_memory_repository = providers.Singleton(PostgresUserMemoryRepository, engine=engine)
 
+    # 用户身份映射 PostgreSQL 仓储。
+    user_identity_repository = providers.Singleton(PostgresUserIdentityRepository, engine=engine)
+
     # 对话记忆服务，负责文本提取与向量写入。
     conversation_memory_service = providers.Singleton(
         ConversationMemoryService,
@@ -79,6 +88,12 @@ class AppContainer(containers.DeclarativeContainer):
     user_memory_service = providers.Singleton(
         UserMemoryService,
         repository=user_memory_repository,
+    )
+
+    # 用户身份解析服务，负责把第三方身份映射成系统 user_id。
+    user_identity_service = providers.Singleton(
+        UserIdentityService,
+        repository=user_identity_repository,
     )
 
     # 聊天模型客户端，应用生命周期内复用。
@@ -133,6 +148,7 @@ class AppContainer(containers.DeclarativeContainer):
         message_sender=message_sender,
         conversation_memory_service=conversation_memory_service,
         chat_session_info_service=chat_session_info_service,
+        user_identity_service=user_identity_service,
         chat_agent=chat_agent,
     )
 

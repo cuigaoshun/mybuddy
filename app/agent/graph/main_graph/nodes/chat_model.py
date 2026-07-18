@@ -5,7 +5,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from app.agent.context.tools.selector import build_category_selector_tool
 from app.agent.graph.main_graph.constants import ToolPhase
 from app.agent.graph.main_graph.runtime import GraphRuntimeContext
-from app.agent.util import extract_reply_text
+from app.util import extract_reply_text
 
 from ..state import ReplyState
 

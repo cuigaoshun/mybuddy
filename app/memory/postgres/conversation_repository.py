@@ -4,7 +4,7 @@ from collections.abc import Collection
 from datetime import UTC, datetime
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import BigInteger, Column, DateTime, Identity, Index, MetaData, SmallInteger, Table, Text, bindparam, desc, func, select
+from sqlalchemy import BigInteger, Column, DateTime, Identity, Index, MetaData, SmallInteger, Table, Text, Uuid, bindparam, desc, func, select
 from sqlalchemy.dialects.postgresql import JSONB, insert
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
@@ -27,7 +27,7 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
             "chat_memory",
             self._metadata,
             Column("id", BigInteger, Identity(always=True), primary_key=True),
-            Column("user_id", Text, nullable=False),
+            Column("user_id", Uuid(as_uuid=False), nullable=False),
             Column("chat_id", Text, nullable=False),
             Column("message_id", Text, nullable=False),
             Column("type", SmallInteger, nullable=False),

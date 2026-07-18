@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import BigInteger, Column, DateTime, Identity, Index, MetaData, Table, Text, and_, case, func, or_, select, update
+from sqlalchemy import BigInteger, Column, DateTime, Identity, Index, MetaData, Table, Text, Uuid, and_, case, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Engine
 
@@ -23,7 +23,7 @@ class PostgresChatSessionInfoRepository(ChatSessionInfoRepository):
             "chat_session_info",
             self._metadata,
             Column("id", BigInteger, Identity(always=True), primary_key=True),
-            Column("user_id", Text, nullable=False),
+            Column("user_id", Uuid(as_uuid=False), nullable=False),
             Column("im_type", Text, nullable=False),
             Column("chat_id", Text, nullable=False),
             Column("first_reply_time", DateTime(timezone=True), nullable=True),

@@ -7,7 +7,7 @@ from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import BaseMessage
 from loguru import logger
 
-from app.agent.util.messages import extract_reply_text, format_messages_for_log
+from app.util import extract_reply_text, format_messages_for_log
 
 
 class DebugHandler(BaseCallbackHandler):

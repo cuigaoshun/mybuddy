@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Collection, Protocol
 
-from app.memory.models import ChatSessionInfo, MemoryRecord, PendingMemorySession, RetrievedMemoryHit, UserMemory
+from app.memory.models import ChatSessionInfo, ExternalUserIdentity, MemoryRecord, PendingMemorySession, RetrievedMemoryHit, UserMemory
 
 
 class ConversationMemoryRepository(Protocol):
@@ -125,4 +125,12 @@ class UserMemoryRepository(Protocol):
         ...
 
     def save(self, user_memory: UserMemory) -> None:
+        ...
+
+
+class UserIdentityRepository(Protocol):
+    def get_by_external_identity(self, im_type: str, third_party_user_id: str) -> ExternalUserIdentity | None:
+        ...
+
+    def get_or_create_user_id(self, im_type: str, third_party_user_id: str) -> str:
         ...

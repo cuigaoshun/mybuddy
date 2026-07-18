@@ -14,7 +14,7 @@ ASSISTANT_MESSAGE_TYPE: Final[int] = 1
 class MemoryRecord:
     """对话记忆记录模型。"""
 
-    user_id: str  # 用户标识，当前一期使用飞书 sender_id
+    user_id: str  # 系统内部统一用户标识
     chat_id: str  # 会话标识
     message_id: str  # 消息标识，用于去重
     message_type: int  # 消息方向，0 表示用户消息，1 表示助手消息
@@ -156,3 +156,13 @@ class HistorySearchResult:
     record: MemoryRecord
     matched_by_text: bool
     matched_by_vector: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ExternalUserIdentity:
+    """第三方平台身份与系统 user_id 的绑定关系。"""
+
+    user_id: str
+    im_type: str
+    third_party_user_id: str
+    created_at: datetime

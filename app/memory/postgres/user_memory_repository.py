@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import BigInteger, Column, DateTime, Identity, Integer, MetaData, Table, Text, select
+from sqlalchemy import BigInteger, Column, DateTime, Identity, Integer, MetaData, Table, Text, Uuid, select
 from sqlalchemy.dialects.postgresql import JSONB, insert
 from sqlalchemy.engine import Engine
 
@@ -22,7 +22,7 @@ class PostgresUserMemoryRepository(UserMemoryRepository):
             "user_memory",
             self._metadata,
             Column("id", BigInteger, Identity(always=True), primary_key=True),
-            Column("user_id", Text, nullable=False),
+            Column("user_id", Uuid(as_uuid=False), nullable=False),
             Column("im_type", Text, nullable=False),
             Column("long_term_memory_summary", Text, nullable=True),
             Column("user_profile_json", JSONB, nullable=False),
