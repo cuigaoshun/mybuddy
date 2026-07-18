@@ -5,7 +5,7 @@ import json
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 
 from app.agent.context.main_graph.models import ContextBundle, ContextEvidenceBlock, ContextUserMemorySnapshot
-from app.memory.models import ASSISTANT_MESSAGE_TYPE, USER_MESSAGE_TYPE, MemoryRecord, UserMemoryProfile
+from app.storage.models import ASSISTANT_MESSAGE_TYPE, USER_MESSAGE_TYPE, MemoryRecord, UserMemoryProfile
 
 
 class ConversationContextFormatter:

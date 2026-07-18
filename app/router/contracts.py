@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from app.event.models import IncomingChatMessage
-from app.memory.models import ChatSessionInfo
+from app.storage.models import ChatSessionInfo
 
 
 class MessageSender(Protocol):

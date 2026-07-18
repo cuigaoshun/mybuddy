@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.memory.repositories import UserIdentityRepository
+from app.storage.repositories import UserIdentityRepository
 
 
 class UserIdentityService:

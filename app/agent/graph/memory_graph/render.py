@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """长期记忆图渲染脚本。
 
-这个文件只用于把编译后的 memory graph 导出成图片，
+这个文件只用于把编译后的 storage graph 导出成图片，
 便于观察当前节点结构，不参与线上业务执行。
 """
 

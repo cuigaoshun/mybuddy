@@ -12,7 +12,7 @@ from typing import TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.memory.models import MemoryRecord, PendingMemorySession, UserMemory, UserMemoryProfile
+from app.storage.models import MemoryRecord, PendingMemorySession, UserMemory, UserMemoryProfile
 
 UserProfileScalarPatchValue: TypeAlias = str | bool | int | float | None
 

@@ -8,7 +8,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 
 from app.agent.graph.memory_graph.state import MemoryGraphState
-from app.memory.session_info_service import ChatSessionInfoService
+from app.storage.session_info_service import ChatSessionInfoService
 
 
 @dataclass(slots=True)

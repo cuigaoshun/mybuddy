@@ -9,8 +9,8 @@ from sqlalchemy.dialects.postgresql import JSONB, insert
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 
-from app.memory.models import MemoryRecord, RetrievedMemoryHit
-from app.memory.repositories import ConversationMemoryRepository
+from app.storage.models import MemoryRecord, RetrievedMemoryHit
+from app.storage.repositories import ConversationMemoryRepository
 
 CHAT_MEMORY_SCHEMA = "public"
 RECENT_MESSAGE_LIMIT = 10

@@ -3,10 +3,10 @@ from __future__ import annotations
 from loguru import logger
 
 from app.event.models import IncomingChatMessage
-from app.memory.models import ASSISTANT_MESSAGE_TYPE, ChatSessionInfo, TEXT_CONTENT_TYPE, USER_MESSAGE_TYPE, MemoryRecord
-from app.memory.service import ConversationMemoryService
-from app.memory.session_info_service import ChatSessionInfoService
-from app.memory.user_identity_service import UserIdentityService
+from app.storage.models import ASSISTANT_MESSAGE_TYPE, ChatSessionInfo, TEXT_CONTENT_TYPE, USER_MESSAGE_TYPE, MemoryRecord
+from app.storage.service import ConversationMemoryService
+from app.storage.session_info_service import ChatSessionInfoService
+from app.storage.user_identity_service import UserIdentityService
 from .contracts import ChatAgent, MessageSender
 
 

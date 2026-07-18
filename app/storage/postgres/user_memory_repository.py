@@ -6,8 +6,8 @@ from sqlalchemy import BigInteger, Column, DateTime, Identity, Integer, MetaData
 from sqlalchemy.dialects.postgresql import JSONB, insert
 from sqlalchemy.engine import Engine
 
-from app.memory.models import UserMemory, UserMemoryAffinity, UserMemoryAttribute, UserMemoryAttributes, UserMemoryProfile, UserMemoryRelationship
-from app.memory.repositories import UserMemoryRepository
+from app.storage.models import UserMemory, UserMemoryAffinity, UserMemoryAttribute, UserMemoryAttributes, UserMemoryProfile, UserMemoryRelationship
+from app.storage.repositories import UserMemoryRepository
 
 USER_MEMORY_SCHEMA = "public"
 

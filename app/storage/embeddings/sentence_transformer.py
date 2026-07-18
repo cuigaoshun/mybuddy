@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Final
 
-from app.memory.embeddings.base import EmbeddingProvider
+from app.storage.embeddings.base import EmbeddingProvider
 
 EMBEDDING_MODEL_NAME: Final[str] = "BAAI/bge-base-zh-v1.5"
 QUERY_INSTRUCTION: Final[str] = "为这个句子生成表示以用于检索相关文章："

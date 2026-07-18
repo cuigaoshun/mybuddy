@@ -12,17 +12,17 @@ from app.bootstrap.postgres import get_engine
 from app.core.config import AppRuntimeConfig, ExaConfig, LlmConfig
 from app.event.bus import EventBus
 from app.gateway.dispatch import FeishuDispatcher
-from app.memory.embeddings import SentenceTransformerEmbeddingProvider
-from app.memory.postgres import (
+from app.storage.embeddings import SentenceTransformerEmbeddingProvider
+from app.storage.postgres import (
     PostgresChatSessionInfoRepository,
     PostgresConversationMemoryRepository,
     PostgresUserIdentityRepository,
     PostgresUserMemoryRepository,
 )
-from app.memory.service import ConversationMemoryService
-from app.memory.session_info_service import ChatSessionInfoService
-from app.memory.user_identity_service import UserIdentityService
-from app.memory.user_memory_service import UserMemoryService
+from app.storage.service import ConversationMemoryService
+from app.storage.session_info_service import ChatSessionInfoService
+from app.storage.user_identity_service import UserIdentityService
+from app.storage.user_memory_service import UserMemoryService
 from app.router.session_manager import SessionManager
 from app.services.llm import create_chat_model
 from app.services.im_sender import FeishuMessageSender

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.event.models import IncomingChatMessage
-from app.memory.models import ChatSessionInfo
+from app.storage.models import ChatSessionInfo
 from app.router.contracts import ChatAgent
 
 from .state import ReplyState

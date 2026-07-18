@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Collection, Protocol
 
-from app.memory.models import ChatSessionInfo, ExternalUserIdentity, MemoryRecord, PendingMemorySession, RetrievedMemoryHit, UserMemory
+from app.storage.models import ChatSessionInfo, ExternalUserIdentity, MemoryRecord, PendingMemorySession, RetrievedMemoryHit, UserMemory
 
 
 class ConversationMemoryRepository(Protocol):

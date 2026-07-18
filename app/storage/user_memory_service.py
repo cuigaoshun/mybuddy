@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from app.memory.models import UserMemory
-from app.memory.repositories import UserMemoryRepository
+from app.storage.models import UserMemory
+from app.storage.repositories import UserMemoryRepository
 
 
 class UserMemoryService:

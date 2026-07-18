@@ -6,8 +6,8 @@ from sqlalchemy import BigInteger, Column, DateTime, Identity, Index, MetaData, 
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Engine
 
-from app.memory.models import ExternalUserIdentity
-from app.memory.repositories import UserIdentityRepository
+from app.storage.models import ExternalUserIdentity
+from app.storage.repositories import UserIdentityRepository
 from app.util import generate_uuid7
 
 USER_IDENTITY_SCHEMA = "public"

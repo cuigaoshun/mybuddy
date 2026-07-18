@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.agent.graph.main_graph.runtime import GraphRuntimeContext
-from app.memory.models import RetrievedMemoryHit
+from app.storage.models import RetrievedMemoryHit
 
 from ..state import ReplyState
 

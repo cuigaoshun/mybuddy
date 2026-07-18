@@ -6,8 +6,8 @@ from sqlalchemy import BigInteger, Column, DateTime, Identity, Index, MetaData, 
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Engine
 
-from app.memory.models import ChatSessionInfo, PendingMemorySession
-from app.memory.repositories import ChatSessionInfoRepository
+from app.storage.models import ChatSessionInfo, PendingMemorySession
+from app.storage.repositories import ChatSessionInfoRepository
 
 CHAT_SESSION_INFO_SCHEMA = "public"
 PENDING_MEMORY_PROCESSING_IDLE_MINUTES = 30

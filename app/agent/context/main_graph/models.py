@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from app.event.models import IncomingChatMessage
-from app.memory.models import MemoryRecord, UserMemoryProfile
+from app.storage.models import MemoryRecord, UserMemoryProfile
 
 
 @dataclass(frozen=True, slots=True)

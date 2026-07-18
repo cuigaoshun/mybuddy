@@ -3,8 +3,8 @@ from langchain.tools import ToolRuntime
 
 from app.agent.context.tools.models import RegisteredTool, ToolDefinition
 from app.agent.context.tools.tool_runtime import get_reply_state
-from app.memory.models import ConversationHistoryQuery, HistorySearchResult
-from app.memory.service import ConversationMemoryService
+from app.storage.models import ConversationHistoryQuery, HistorySearchResult
+from app.storage.service import ConversationMemoryService
 
 from .models import HISTORY_TOOLS_CATEGORY, SearchHistoryToolInput, parse_tool_datetime
 

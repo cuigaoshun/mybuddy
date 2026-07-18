@@ -3,7 +3,7 @@ from __future__ import annotations
 from app.agent.context.main_graph.models import ContextBundle, ContextEvidenceBlock, ContextSessionSnapshot, ContextUserMemorySnapshot
 from app.agent.context.main_graph.system_prompt import SYSTEM_PROMPT
 from app.agent.graph.main_graph.runtime import GraphRuntimeContext
-from app.memory.models import MemoryRecord, UserMemory
+from app.storage.models import MemoryRecord, UserMemory
 
 from ..state import ReplyState
 

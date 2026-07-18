@@ -4,8 +4,8 @@ import time
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
-from app.memory.models import ChatSessionInfo, PendingMemorySession
-from app.memory.repositories import ChatSessionInfoRepository
+from app.storage.models import ChatSessionInfo, PendingMemorySession
+from app.storage.repositories import ChatSessionInfoRepository
 
 # 单次回复租约的有效期，超过该时间后允许其他请求重新竞争租约。
 REPLY_LEASE_SECONDS = 30

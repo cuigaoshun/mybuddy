@@ -3,9 +3,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Collection
 
-from app.memory.embeddings import EmbeddingProvider
-from app.memory.models import ConversationHistoryQuery, HistorySearchResult, MemoryRecord, RetrievedMemoryHit
-from app.memory.repositories import ConversationMemoryRepository
+from app.storage.embeddings import EmbeddingProvider
+from app.storage.models import ConversationHistoryQuery, HistorySearchResult, MemoryRecord, RetrievedMemoryHit
+from app.storage.repositories import ConversationMemoryRepository
 
 
 class ConversationMemoryService:

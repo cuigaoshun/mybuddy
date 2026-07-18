@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 from app.agent.context.tool import ContextTool
 from app.agent.context.tools.registry import ToolRegistry
-from app.memory.service import ConversationMemoryService
-from app.memory.user_memory_service import UserMemoryService
+from app.storage.service import ConversationMemoryService
+from app.storage.user_memory_service import UserMemoryService
 from app.services.llm import ChatModel
 from app.services.web_search import ExaWebSearchService
 

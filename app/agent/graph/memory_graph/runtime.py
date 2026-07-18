@@ -9,9 +9,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.agent.graph.main_graph.runtime import LLMProvider
-from app.memory.service import ConversationMemoryService
-from app.memory.session_info_service import ChatSessionInfoService
-from app.memory.user_memory_service import UserMemoryService
+from app.storage.service import ConversationMemoryService
+from app.storage.session_info_service import ChatSessionInfoService
+from app.storage.user_memory_service import UserMemoryService
 
 
 @dataclass(frozen=True)

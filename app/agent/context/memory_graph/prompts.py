@@ -6,7 +6,7 @@ from typing import Final
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
 from app.agent.graph.memory_graph.state import MemoryCandidate
-from app.memory.models import ASSISTANT_MESSAGE_TYPE, USER_MESSAGE_TYPE, MemoryRecord, UserMemoryProfile
+from app.storage.models import ASSISTANT_MESSAGE_TYPE, USER_MESSAGE_TYPE, MemoryRecord, UserMemoryProfile
 
 EXTRACT_MEMORY_SYSTEM_PROMPT: Final[str] = (
     "你负责从新增对话里提取适合写入长期记忆的候选信息。"

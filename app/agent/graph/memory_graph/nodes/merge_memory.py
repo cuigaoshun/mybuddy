@@ -11,7 +11,7 @@ from typing import Final
 from app.agent.context.memory_graph import build_merge_memory_messages
 from app.agent.graph.memory_graph.runtime import MemoryGraphRuntimeContext
 from app.agent.graph.memory_graph.state import MemoryGraphState, MemoryMergeResponse, UserMemoryAffinityPatch, UserProfilePatch, build_empty_profile, build_now
-from app.memory.models import UserMemory, UserMemoryAffinity, UserMemoryAttribute, UserMemoryAttributes, UserMemoryProfile, UserMemoryRelationship
+from app.storage.models import UserMemory, UserMemoryAffinity, UserMemoryAttribute, UserMemoryAttributes, UserMemoryProfile, UserMemoryRelationship
 
 MAX_SUMMARY_LINES: Final[int] = 20
 

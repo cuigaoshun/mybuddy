@@ -7,7 +7,7 @@ from app.agent.context.main_graph.models import ContextBundle
 from app.agent.context.tools.models import ToolCategorySelection
 from app.agent.graph.main_graph.constants import ToolPhase
 from app.event.models import IncomingChatMessage
-from app.memory.models import ChatSessionInfo, MemoryRecord, RetrievedMemoryHit, UserMemory
+from app.storage.models import ChatSessionInfo, MemoryRecord, RetrievedMemoryHit, UserMemory
 
 
 class ReplyState(BaseModel):
