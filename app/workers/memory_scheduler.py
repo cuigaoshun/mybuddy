@@ -21,6 +21,7 @@ class MemorySchedulerRunner:
 
     @asynccontextmanager
     async def start(self, app: FastAPI):
+        pass
         app.state.memory_scheduler = self
         self.scheduler.add_job(
             self.scan_pending_sessions,
@@ -36,7 +37,6 @@ class MemorySchedulerRunner:
             self.scheduler.shutdown(wait=False)
 
     def scan_pending_sessions(self) -> None:
-        pass
-        # sessions = self.chat_session_info_service.list_sessions_pending_memory_processing(limit=20)
-        # for session in sessions:
-        #     self.memory_graph.invoke(MemoryGraphState(session=session))
+        sessions = self.chat_session_info_service.list_sessions_pending_memory_processing(limit=20)
+        for session in sessions:
+            self.memory_graph.invoke(MemoryGraphState(session=session))
