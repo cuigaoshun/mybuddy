@@ -149,3 +149,66 @@ ON public.user_memory (updated_at);
 
 CREATE INDEX IF NOT EXISTS idx_user_memory_last_processed_message_id
 ON public.user_memory (last_processed_message_id);
+
+-- 7. 创建微信账号运行态表。
+-- 一期约束：一个微信 bot 账号只对应一个微信用户聊天对端。
+CREATE TABLE IF NOT EXISTS public.wechat_account (
+    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id uuid NULL,
+    bot_account_id text NULL,
+    third_party_user_id text NULL,
+    qrcode text NOT NULL,
+    qrcode_status text NOT NULL,
+    bot_token text NULL,
+    get_updates_buf text NULL,
+    context_token text NULL,
+    typing_ticket text NULL,
+    source_message_id text NULL,
+    is_active boolean NOT NULL DEFAULT true,
+    logged_in_at timestamptz NULL,
+    qrcode_updated_at timestamptz NOT NULL DEFAULT now(),
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+COMMENT ON TABLE public.wechat_account IS '微信账号运行表，一期约束下同时保存扫码登录状态、bot 账号状态、长轮询游标和唯一聊天对端上下文';
+COMMENT ON COLUMN public.wechat_account.id IS '主键，自增标识';
+COMMENT ON COLUMN public.wechat_account.user_id IS '系统内部用户 ID；可在扫码发起时指定，也可在扫码成功后自动生成并回填';
+COMMENT ON COLUMN public.wechat_account.bot_account_id IS '微信 bot 账号 ID，对应协议中的 ilink_bot_id';
+COMMENT ON COLUMN public.wechat_account.third_party_user_id IS '当前唯一聊天对端的微信用户 ID，例如 ...@im.wechat';
+COMMENT ON COLUMN public.wechat_account.qrcode IS '扫码登录轮询 token，用于查询二维码登录状态';
+COMMENT ON COLUMN public.wechat_account.qrcode_status IS '当前二维码状态，例如 wait、scaned、confirmed、expired';
+COMMENT ON COLUMN public.wechat_account.bot_token IS '扫码成功后得到的当前有效 bot_token';
+COMMENT ON COLUMN public.wechat_account.get_updates_buf IS '当前 bot 账号最近一次持久化的长轮询游标';
+COMMENT ON COLUMN public.wechat_account.context_token IS '当前唯一聊天对端最近一次可用的回复上下文令牌';
+COMMENT ON COLUMN public.wechat_account.typing_ticket IS '当前唯一聊天对端最近一次可用的 typing ticket';
+COMMENT ON COLUMN public.wechat_account.source_message_id IS '最近一次刷新 context_token 的来源消息 ID';
+COMMENT ON COLUMN public.wechat_account.is_active IS '该微信账号当前是否生效';
+COMMENT ON COLUMN public.wechat_account.logged_in_at IS '本次扫码确认成功时间';
+COMMENT ON COLUMN public.wechat_account.qrcode_updated_at IS '最近一次生成或刷新二维码时间';
+COMMENT ON COLUMN public.wechat_account.created_at IS '记录创建时间';
+COMMENT ON COLUMN public.wechat_account.updated_at IS '记录最近更新时间';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uidx_wechat_account_qrcode
+ON public.wechat_account (qrcode);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uidx_wechat_account_bot_account_id
+ON public.wechat_account (bot_account_id)
+WHERE bot_account_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uidx_wechat_account_user_id
+ON public.wechat_account (user_id)
+WHERE user_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uidx_wechat_account_third_party_user_id
+ON public.wechat_account (third_party_user_id)
+WHERE third_party_user_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_wechat_account_is_active
+ON public.wechat_account (is_active);
+
+CREATE INDEX IF NOT EXISTS idx_wechat_account_qrcode_status
+ON public.wechat_account (qrcode_status);
+
+CREATE INDEX IF NOT EXISTS idx_wechat_account_updated_at
+ON public.wechat_account (updated_at);

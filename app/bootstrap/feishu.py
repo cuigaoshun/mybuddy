@@ -6,7 +6,7 @@ import lark_oapi as lark
 import lark_oapi.ws.client as lark_ws_client
 from loguru import logger
 
-from app.bootstrap.protocols import FeishuBootstrapContainer
+from app.bootstrap.protocols import AppBootstrapContainer
 from app.core.config import FeishuConfig
 from app.core.log import configure_logging
 from app.event.bus import EventBus, INCOMING_CHAT_TOPIC
@@ -14,7 +14,7 @@ from app.event.models import IM_TYPE_FEISHU
 
 
 # 装配飞书 websocket client。
-def create_feishu_client(container: FeishuBootstrapContainer) -> lark.ws.Client:
+def create_feishu_client(container: AppBootstrapContainer) -> lark.ws.Client:
     """装配飞书 websocket client。"""
     feishu_config = container.feishu_config()
     if not isinstance(feishu_config, FeishuConfig):

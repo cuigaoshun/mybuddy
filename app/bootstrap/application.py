@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 
 from app.api.routes.health import router as health_router
+from app.api.routes.wechat import router as wechat_router
 from app.bootstrap.container import AppContainer
 from app.core.config import init_config
 from app.event.bus import EventBus
@@ -29,6 +30,7 @@ async def lifespan(_: FastAPI):
     container.llm_config.override(providers.Object(config.llm))
     container.exa_config.override(providers.Object(config.exa))
     container.event_bus.override(providers.Object(event_bus))
+    _.state.container = container
 
     # 初始化数据库 Engine。
     container.engine()
@@ -54,4 +56,5 @@ async def lifespan(_: FastAPI):
 def create_app() -> FastAPI:
     app = FastAPI(lifespan=lifespan)
     app.include_router(health_router)
+    app.include_router(wechat_router)
     return app

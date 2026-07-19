@@ -14,3 +14,13 @@ class UserIdentityService:
             im_type=im_type,
             third_party_user_id=third_party_user_id,
         )
+
+    def create_user_id(self) -> str:
+        return self._repository.create_user_id()
+
+    def bind_external_identity(self, user_id: str, im_type: str, third_party_user_id: str) -> str:
+        return self._repository.bind_external_identity(
+            user_id=user_id,
+            im_type=im_type,
+            third_party_user_id=third_party_user_id,
+        )

@@ -4,12 +4,16 @@ from typing import Protocol
 
 from app.event.models import IncomingChatMessage
 from app.storage.models import ChatSessionInfo
+from app.services.im_sender.models import OutChatMessage, SentMessageResult
 
 
 class MessageSender(Protocol):
     """统一发送消息协议，向路由层屏蔽具体 IM 实现。"""
 
-    def send_text(self, chat_id: str, text: str):
+    def send_text(self, message: OutChatMessage) -> SentMessageResult:
+        ...
+
+    def set_typing_status(self, message: OutChatMessage, is_typing: bool) -> None:
         ...
 
 

@@ -108,6 +108,46 @@ class PostgresUserIdentityRepository(UserIdentityRepository):
             )
             return user_id
 
+    def create_user_id(self) -> str:
+        now = datetime.now(UTC)
+        user_id = str(generate_uuid7())
+        with self._engine.begin() as connection:
+            connection.execute(
+                insert(self._users_table).values(
+                    user_id=user_id,
+                    created_at=now,
+                )
+            )
+        return user_id
+
+    def bind_external_identity(self, user_id: str, im_type: str, third_party_user_id: str) -> str:
+        now = datetime.now(UTC)
+        with self._engine.begin() as connection:
+            connection.execute(
+                select(func.pg_advisory_xact_lock(func.hashtext(_build_lock_key(im_type, third_party_user_id))))
+            )
+            existing_identity = connection.execute(
+                select(self._identities_table.c.user_id)
+                .where(
+                    self._identities_table.c.im_type == im_type,
+                    self._identities_table.c.third_party_user_id == third_party_user_id,
+                )
+                .limit(1)
+            ).scalar_one_or_none()
+            if existing_identity is not None:
+                if existing_identity != user_id:
+                    raise ValueError(f"第三方身份已绑定到其他 user_id: {third_party_user_id}")
+                return existing_identity
+            connection.execute(
+                insert(self._identities_table).values(
+                    user_id=user_id,
+                    im_type=im_type,
+                    third_party_user_id=third_party_user_id,
+                    created_at=now,
+                )
+            )
+            return user_id
+
 
 def _build_lock_key(im_type: str, third_party_user_id: str) -> str:
     return f"{im_type}:{third_party_user_id}"

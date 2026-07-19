@@ -9,12 +9,11 @@ from lark_oapi.api.im.v1 import CreateMessageRequest, CreateMessageRequestBody
 
 from app.core.config import FeishuConfig
 from app.event.models import IM_TYPE_FEISHU
-from app.router.contracts import MessageSender
 from app.services.im_sender.errors import SendMessageError
-from app.services.im_sender.models import SentMessageResult
+from app.services.im_sender.models import OutChatMessage, SentMessageResult
 
 
-class FeishuMessageSender(MessageSender):
+class FeishuMessageSender:
     """飞书消息发送实现，负责封装飞书 SDK 调用细节。"""
 
     def __init__(self, config: FeishuConfig) -> None:
@@ -25,8 +24,10 @@ class FeishuMessageSender(MessageSender):
             .log_level(_resolve_lark_log_level(config.log_level)) \
             .build()
 
-    def send_text(self, chat_id: str, text: str) -> SentMessageResult:
+    def send_text(self, message: OutChatMessage) -> SentMessageResult:
         """发送一条飞书文本消息，并返回统一发送结果。"""
+        chat_id = message.chat_id
+        text = message.text
         request = CreateMessageRequest.builder() \
             .receive_id_type("chat_id") \
             .request_body(
@@ -56,7 +57,11 @@ class FeishuMessageSender(MessageSender):
             msg=response.msg,
             log_id=response.get_log_id(),
         )
-        raise SendMessageError(chat_id, response.code, response.msg)
+        raise SendMessageError(chat_id, response.code, response.msg, im_type=IM_TYPE_FEISHU)
+
+    def set_typing_status(self, message: OutChatMessage, is_typing: bool) -> None:
+        # 飞书当前先不实现输入中状态，保留空实现以兼容统一 sender 接口。
+        return
 
 
 def _resolve_lark_log_level(log_level: str) -> lark.LogLevel:

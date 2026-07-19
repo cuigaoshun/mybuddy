@@ -9,25 +9,29 @@ from app.agent.graph.memory_graph import MemoryGraphServices, build_memory_graph
 from app.bootstrap.feishu import create_feishu_client
 from app.bootstrap.listener import Listener
 from app.bootstrap.postgres import get_engine
+from app.bootstrap.wechat import create_wechat_poller_runner
 from app.core.config import AppRuntimeConfig, ExaConfig, LlmConfig
 from app.event.bus import EventBus
-from app.gateway.dispatch import FeishuDispatcher
+from app.gateway.dispatch import FeishuDispatcher, WeChatDispatcher
 from app.storage.embeddings import SentenceTransformerEmbeddingProvider
 from app.storage.postgres import (
     PostgresChatSessionInfoRepository,
     PostgresConversationMemoryRepository,
     PostgresUserIdentityRepository,
+    PostgresWeChatAccountRepository,
     PostgresUserMemoryRepository,
 )
 from app.storage.service import ConversationMemoryService
 from app.storage.session_info_service import ChatSessionInfoService
 from app.storage.user_identity_service import UserIdentityService
 from app.storage.user_memory_service import UserMemoryService
+from app.storage.wechat_account_service import WeChatAccountService
 from app.router.session_manager import SessionManager
 from app.services.llm import create_chat_model
-from app.services.im_sender import FeishuMessageSender
+from app.services.im_sender import CompositeMessageSender, FeishuMessageSender, WeChatMessageSender
 from app.services.web_search import ExaWebSearchService
 from app.workers.memory_scheduler import MemorySchedulerRunner
+from pkg.weixin import WeixinApiClient
 
 
 class AppContainer(containers.DeclarativeContainer):
@@ -71,6 +75,9 @@ class AppContainer(containers.DeclarativeContainer):
     # 用户身份映射 PostgreSQL 仓储。
     user_identity_repository = providers.Singleton(PostgresUserIdentityRepository, engine=engine)
 
+    # 微信账号运行态 PostgreSQL 仓储。
+    wechat_account_repository = providers.Singleton(PostgresWeChatAccountRepository, engine=engine)
+
     # 对话记忆服务，负责文本提取与向量写入。
     conversation_memory_service = providers.Singleton(
         ConversationMemoryService,
@@ -94,6 +101,13 @@ class AppContainer(containers.DeclarativeContainer):
     user_identity_service = providers.Singleton(
         UserIdentityService,
         repository=user_identity_repository,
+    )
+
+    # 微信账号运行态服务，统一维护扫码状态、账号状态和当前上下文缓存。
+    wechat_account_service = providers.Singleton(
+        WeChatAccountService,
+        repository=wechat_account_repository,
+        user_identity_service=user_identity_service,
     )
 
     # 聊天模型客户端，应用生命周期内复用。
@@ -140,7 +154,25 @@ class AppContainer(containers.DeclarativeContainer):
     )
 
     # 飞书消息发送器。
-    message_sender = providers.Singleton(FeishuMessageSender, feishu_config)
+    feishu_message_sender = providers.Singleton(FeishuMessageSender, feishu_config)
+
+    # 微信 API 低层 client，统一收口二维码、长轮询、发送与 typing 请求。
+    weixin_api_client = providers.Singleton(WeixinApiClient)
+
+    # 微信发送器，负责把统一出站对象翻译成微信协议请求。
+    wechat_message_sender = providers.Singleton(
+        WeChatMessageSender,
+        client=weixin_api_client,
+        wechat_account_service=wechat_account_service,
+        runtime_config=app_runtime_config,
+    )
+
+    # 统一 sender 根据 im_type 分发到飞书或微信实现。
+    message_sender = providers.Singleton(
+        CompositeMessageSender,
+        feishu_sender=feishu_message_sender,
+        wechat_sender=wechat_message_sender,
+    )
 
     # 会话编排器，每次取用时创建一个新实例。
     session_manager = providers.Factory(
@@ -155,8 +187,18 @@ class AppContainer(containers.DeclarativeContainer):
     # 飞书消息分发器，每次取用时创建一个新实例。
     feishu_dispatcher = providers.Factory(FeishuDispatcher, event_bus=event_bus)
 
+    # 微信入站分发器负责做统一归一化并发布到事件总线。
+    wechat_dispatcher = providers.Factory(
+        WeChatDispatcher,
+        event_bus=event_bus,
+        runtime_config=app_runtime_config,
+    )
+
     # 飞书 websocket client，应用生命周期内复用。
     feishu_client = providers.Singleton(create_feishu_client, container=__self__)
+
+    # 微信长轮询 runner 在应用启动时按活跃账号统一拉起。
+    wechat_poller_runner = providers.Singleton(create_wechat_poller_runner, container=__self__)
 
     # 监听器管理器，应用生命周期内复用。
     listener = providers.Singleton(Listener, container=__self__)

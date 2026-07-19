@@ -166,3 +166,24 @@ class ExternalUserIdentity:
     im_type: str
     third_party_user_id: str
     created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class WeChatAccount:
+    """微信账号运行态快照。"""
+
+    qrcode: str
+    qrcode_status: str
+    user_id: str | None = None
+    bot_account_id: str | None = None
+    third_party_user_id: str | None = None
+    bot_token: str | None = None
+    get_updates_buf: str | None = None
+    context_token: str | None = None
+    typing_ticket: str | None = None
+    source_message_id: str | None = None
+    is_active: bool = True
+    logged_in_at: datetime | None = None
+    qrcode_updated_at: datetime | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Collection, Protocol
 
-from app.storage.models import ChatSessionInfo, ExternalUserIdentity, MemoryRecord, PendingMemorySession, RetrievedMemoryHit, UserMemory
+from app.storage.models import ChatSessionInfo, ExternalUserIdentity, MemoryRecord, PendingMemorySession, RetrievedMemoryHit, UserMemory, WeChatAccount
 
 
 class ConversationMemoryRepository(Protocol):
@@ -133,4 +133,58 @@ class UserIdentityRepository(Protocol):
         ...
 
     def get_or_create_user_id(self, im_type: str, third_party_user_id: str) -> str:
+        ...
+
+    def create_user_id(self) -> str:
+        ...
+
+    def bind_external_identity(self, user_id: str, im_type: str, third_party_user_id: str) -> str:
+        ...
+
+
+class WeChatAccountRepository(Protocol):
+    def get_by_qrcode(self, qrcode: str) -> WeChatAccount | None:
+        ...
+
+    def get_by_user_id(self, user_id: str) -> WeChatAccount | None:
+        ...
+
+    def get_by_bot_account_id(self, bot_account_id: str) -> WeChatAccount | None:
+        ...
+
+    def mark_session_expired(self, bot_account_id: str) -> WeChatAccount | None:
+        ...
+
+    def create_pending_login(self, qrcode: str, qrcode_status: str, user_id: str | None) -> WeChatAccount:
+        ...
+
+    def refresh_pending_login(self, user_id: str, qrcode: str, qrcode_status: str) -> WeChatAccount:
+        ...
+
+    def complete_login(
+        self,
+        qrcode: str,
+        user_id: str,
+        bot_account_id: str,
+        bot_token: str,
+        qrcode_status: str,
+    ) -> WeChatAccount | None:
+        ...
+
+    def update_qrcode_status(self, qrcode: str, qrcode_status: str) -> WeChatAccount | None:
+        ...
+
+    def update_runtime(
+        self,
+        bot_account_id: str,
+        *,
+        third_party_user_id: str | None,
+        get_updates_buf: str | None,
+        context_token: str | None,
+        source_message_id: str | None,
+        typing_ticket: str | None = None,
+    ) -> WeChatAccount | None:
+        ...
+
+    def list_active_accounts(self) -> list[WeChatAccount]:
         ...
