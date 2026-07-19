@@ -108,7 +108,7 @@ ON public.chat_session_info (user_id);
 
 -- 6. 创建用户级长期记忆表。
 -- 说明：
--- - 长期记忆按 user_id + im_type 维度维护，不挂在 chat_session_info 上。
+-- - 长期记忆按 user_id 维度维护，不挂在 chat_session_info 上。
 -- - long_term_memory_summary 保存可直接注入上下文的长期记忆摘要。
 -- - user_profile_json 保存结构化用户属性，当前建议包含 profile / preferences / relationship 三个顶层对象。
 -- - last_processed_record_id 保存最近一次已处理 chat_memory 主键，用于精确增量整理游标。

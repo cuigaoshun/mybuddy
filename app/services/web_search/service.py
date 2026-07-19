@@ -2,12 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from alibabacloud_searchplat20240529.client import Client
-from alibabacloud_searchplat20240529.models import GetWebSearchRequest
-from alibabacloud_tea_openapi.models import Config
 from loguru import logger
 
 from app.core.config import WebSearchConfig
+from app.pkg.aliyun_web_search import Client, Config, GetWebSearchRequest
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,7 +55,7 @@ class WebSearchService:
 
         results: list[WebSearchResult] = []
         for item in response_results:
-            title = _normalize_text(item.tilte)
+            title = _normalize_text(item.title)
             url = _normalize_text(item.link)
             snippet = _normalize_text(item.snippet)
             if snippet == "":
