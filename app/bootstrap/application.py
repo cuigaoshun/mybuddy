@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 
 from app.api.routes.health import router as health_router
+from app.api.routes import wechat as wechat_routes
 from app.api.routes.wechat import router as wechat_router
 from app.bootstrap.container import AppContainer
 from app.core.config import init_config
@@ -31,6 +32,7 @@ async def lifespan(_: FastAPI):
     container.exa_config.override(providers.Object(config.exa))
     container.event_bus.override(providers.Object(event_bus))
     _.state.container = container
+    container.wire(modules=[wechat_routes])
 
     # 初始化数据库 Engine。
     container.engine()
@@ -50,6 +52,7 @@ async def lifespan(_: FastAPI):
         # container.memory_scheduler_runner().start(_),
     ):
         yield
+    container.unwire()
 
 
 # 创建并返回应用实例。
