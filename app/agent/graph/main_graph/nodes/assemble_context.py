@@ -14,7 +14,6 @@ def assemble_context_node(state: ReplyState, context: GraphRuntimeContext) -> di
     similar_records = tuple(
         context.services.conversation_memory_service.expand_memory_hits(
             user_id=state.message.user_id,
-            im_type=state.message.im_type,
             chat_id=state.message.chat_id,
             hits=state.reranked_memory_hits,
             exclude_message_ids=excluded_message_ids,

@@ -9,12 +9,10 @@ def retrieve_memory_node(state: ReplyState, context: GraphRuntimeContext) -> dic
     return {
         "user_memory": context.services.user_memory_service.get_user_memory(
             user_id=state.message.user_id,
-            im_type=state.message.im_type,
         ),
         "retrieved_memory_hits": tuple(
             context.services.conversation_memory_service.retrieve_memory_hits(
                 user_id=state.message.user_id,
-                im_type=state.message.im_type,
                 chat_id=state.message.chat_id,
                 query_text=state.message.text,
                 limit=10,

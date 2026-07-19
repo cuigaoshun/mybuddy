@@ -23,7 +23,6 @@ class PostgresUserMemoryRepository(UserMemoryRepository):
             self._metadata,
             Column("id", BigInteger, Identity(always=True), primary_key=True),
             Column("user_id", Uuid(as_uuid=False), nullable=False),
-            Column("im_type", Text, nullable=False),
             Column("long_term_memory_summary", Text, nullable=True),
             Column("user_profile_json", JSONB, nullable=False),
             Column("last_processed_message_id", Text, nullable=True),
@@ -32,11 +31,10 @@ class PostgresUserMemoryRepository(UserMemoryRepository):
             Column("updated_at", DateTime(timezone=True), nullable=False),
         )
 
-    def get_by_user(self, user_id: str, im_type: str) -> UserMemory | None:
+    def get_by_user(self, user_id: str) -> UserMemory | None:
         statement = (
             select(
                 self._table.c.user_id,
-                self._table.c.im_type,
                 self._table.c.long_term_memory_summary,
                 self._table.c.user_profile_json,
                 self._table.c.last_processed_message_id,
@@ -46,7 +44,6 @@ class PostgresUserMemoryRepository(UserMemoryRepository):
             )
             .where(
                 self._table.c.user_id == user_id,
-                self._table.c.im_type == im_type,
             )
             .limit(1)
         )
@@ -57,7 +54,6 @@ class PostgresUserMemoryRepository(UserMemoryRepository):
             return None
         return UserMemory(
             user_id=row["user_id"],
-            im_type=row["im_type"],
             long_term_memory_summary=row["long_term_memory_summary"],
             user_profile=_parse_user_memory_profile(dict(row["user_profile_json"] or {})),
             last_processed_message_id=row["last_processed_message_id"],
@@ -69,7 +65,6 @@ class PostgresUserMemoryRepository(UserMemoryRepository):
     def save(self, user_memory: UserMemory) -> None:
         statement = insert(self._table).values(
             user_id=user_memory.user_id,
-            im_type=user_memory.im_type,
             long_term_memory_summary=user_memory.long_term_memory_summary,
             user_profile_json=user_memory.user_profile.to_dict(),
             last_processed_message_id=user_memory.last_processed_message_id,
@@ -78,7 +73,7 @@ class PostgresUserMemoryRepository(UserMemoryRepository):
             updated_at=user_memory.updated_at,
         )
         statement = statement.on_conflict_do_update(
-            index_elements=["user_id", "im_type"],
+            index_elements=["user_id"],
             set_={
                 "long_term_memory_summary": user_memory.long_term_memory_summary,
                 "user_profile_json": user_memory.user_profile.to_dict(),

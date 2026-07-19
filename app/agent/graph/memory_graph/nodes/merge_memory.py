@@ -121,7 +121,6 @@ def _build_user_memory(
     )
     return UserMemory(
         user_id=state.session.user_id,
-        im_type=state.session.im_type,
         long_term_memory_summary=merged_summary,
         user_profile=merged_profile,
         last_processed_message_id=last_processed_message_id,

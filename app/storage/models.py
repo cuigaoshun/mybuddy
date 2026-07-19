@@ -117,7 +117,6 @@ class UserMemory:
     """用户级长期记忆快照。"""
 
     user_id: str
-    im_type: str
     long_term_memory_summary: str | None
     user_profile: UserMemoryProfile
     last_processed_message_id: str | None

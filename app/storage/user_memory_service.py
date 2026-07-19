@@ -10,8 +10,8 @@ class UserMemoryService:
     def __init__(self, repository: UserMemoryRepository) -> None:
         self._repository = repository
 
-    def get_user_memory(self, user_id: str, im_type: str) -> UserMemory | None:
-        return self._repository.get_by_user(user_id=user_id, im_type=im_type)
+    def get_user_memory(self, user_id: str) -> UserMemory | None:
+        return self._repository.get_by_user(user_id=user_id)
 
     def save_user_memory(self, user_memory: UserMemory) -> None:
         self._repository.save(user_memory)

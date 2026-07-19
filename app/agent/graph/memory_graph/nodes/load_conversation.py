@@ -15,7 +15,6 @@ def load_conversation_node(state: MemoryGraphState, context: MemoryGraphRuntimeC
 
     existing_user_memory = context.services.user_memory_service.get_user_memory(
         user_id=state.session.user_id,
-        im_type=state.session.im_type,
     )
     after_message_id = existing_user_memory.last_processed_message_id if existing_user_memory is not None else None
     conversation_records = tuple(

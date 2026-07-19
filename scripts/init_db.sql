@@ -119,7 +119,6 @@ ON public.chat_session_info (user_id, im_type, chat_id);
 CREATE TABLE IF NOT EXISTS public.user_memory (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id uuid NOT NULL,
-    im_type text NOT NULL,
     long_term_memory_summary text NULL,
     user_profile_json jsonb NOT NULL DEFAULT '{"profile": {}, "preferences": {}, "relationship": {}}'::jsonb,
     last_processed_message_id text NULL,
@@ -133,7 +132,6 @@ CREATE TABLE IF NOT EXISTS public.user_memory (
 COMMENT ON TABLE public.user_memory IS '用户级长期记忆表，保存长期摘要、画像和整理游标';
 COMMENT ON COLUMN public.user_memory.id IS '主键，自增标识';
 COMMENT ON COLUMN public.user_memory.user_id IS '系统统一用户标识，值来自第三方身份映射';
-COMMENT ON COLUMN public.user_memory.im_type IS 'IM 平台类型，一期固定为 feishu';
 COMMENT ON COLUMN public.user_memory.long_term_memory_summary IS '供上下文注入使用的长期记忆摘要';
 COMMENT ON COLUMN public.user_memory.user_profile_json IS '结构化用户属性，当前建议包含 profile/preferences/relationship';
 COMMENT ON COLUMN public.user_memory.last_processed_message_id IS '最近一次已进入长期记忆整理流程的消息游标';
@@ -141,8 +139,8 @@ COMMENT ON COLUMN public.user_memory.version IS '长期记忆版本号，用于�
 COMMENT ON COLUMN public.user_memory.created_at IS '记录创建时间';
 COMMENT ON COLUMN public.user_memory.updated_at IS '记录最近更新时间';
 
-CREATE UNIQUE INDEX IF NOT EXISTS uidx_user_memory_user_id_im_type
-ON public.user_memory (user_id, im_type);
+CREATE UNIQUE INDEX IF NOT EXISTS uidx_user_memory_user_id
+ON public.user_memory (user_id);
 
 CREATE INDEX IF NOT EXISTS idx_user_memory_updated_at
 ON public.user_memory (updated_at);
