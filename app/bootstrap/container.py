@@ -31,7 +31,7 @@ from app.services.llm import create_chat_model
 from app.services.im_sender import CompositeMessageSender, FeishuMessageSender, WeChatMessageSender
 from app.services.web_search import ExaWebSearchService
 from app.workers.memory_scheduler import MemorySchedulerRunner
-from pkg.weixin import WeixinApiClient
+from app.pkg.weixin import WeixinApiClient
 
 
 class AppContainer(containers.DeclarativeContainer):

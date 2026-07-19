@@ -6,8 +6,8 @@ import os
 from urllib.parse import quote, urljoin
 
 import httpx
-from pkg.weixin.errors import WeixinApiError
-from pkg.weixin.models import (
+from .errors import WeixinApiError
+from .models import (
     WeixinFileItem,
     WeixinImageItem,
     WeixinMessage,

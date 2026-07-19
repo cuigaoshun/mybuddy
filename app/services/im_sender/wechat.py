@@ -8,7 +8,7 @@ from app.event.models import IM_TYPE_WECHAT
 from app.services.im_sender.errors import SendMessageError
 from app.services.im_sender.models import OutChatMessage, SentMessageResult
 from app.storage.wechat_account_service import WeChatAccountService
-from pkg.weixin import WeixinApiClient, WeixinApiError
+from app.pkg.weixin import WeixinApiClient, WeixinApiError
 from loguru import logger
 
 
@@ -16,7 +16,7 @@ class WeChatMessageSender:
     """微信消息发送实现。"""
 
     def __init__(self, client: WeixinApiClient, wechat_account_service: WeChatAccountService, runtime_config: AppRuntimeConfig) -> None:
-        # 微信 HTTP 能力由 pkg/weixin 统一封装。
+        # 微信 HTTP 能力由 app/pkg/weixin 统一封装。
         self._client = client
         # 账号运行态和上下文缓存统一通过 service 读取和刷新。
         self._wechat_account_service = wechat_account_service

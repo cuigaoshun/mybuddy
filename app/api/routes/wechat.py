@@ -12,8 +12,8 @@ from loguru import logger
 from app.core.config import AppRuntimeConfig
 from app.storage.wechat_account_service import WeChatAccountService
 from app.workers.wechat_poller import WeChatPollingRunner
-from pkg.weixin import WeixinApiClient
-from pkg.weixin import WeixinApiError
+from app.pkg.weixin import WeixinApiClient
+from app.pkg.weixin import WeixinApiError
 
 router = APIRouter(prefix="/wechat", tags=["wechat"])
 

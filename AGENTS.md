@@ -21,7 +21,7 @@
 - `app/services/`，LLM client、IM sender、Web 搜索等外部能力封装。
 - `app/gateway/`，第三方事件接入和归一化。
 - `app/workers/`，轮询和后台扫描任务。
-- `pkg/weixin/`，Python 侧微信协议包，供应用层复用。
+- `app/pkg/weixin/`，Python 侧微信协议包，供应用层复用。
 - `docs/trigger/README.md`，仓库里少数明确写出边界约束的设计文档。
 - `tests/`，更像脚本和演示，不是可依赖的成熟自动化测试套件。
 

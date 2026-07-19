@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from app.core.config import AppRuntimeConfig
 from app.event.bus import EventBus, INCOMING_CHAT_TOPIC
 from app.event.models import IM_TYPE_WECHAT, IncomingChatMessage, IncomingChatMessageExtra, WeixinIncomingMessageExtra
-from pkg.weixin.models import WeixinMessage, WeixinMessageItem
+from app.pkg.weixin.models import WeixinMessage, WeixinMessageItem
 
 
 class WeChatDispatcher:

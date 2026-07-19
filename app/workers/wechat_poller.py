@@ -10,8 +10,8 @@ from loguru import logger
 from app.core.config import AppRuntimeConfig
 from app.gateway.dispatch.weixin import WeChatDispatcher
 from app.storage.wechat_account_service import WeChatAccountService
-from pkg.weixin.models import WeixinMessage
-from pkg.weixin import WeixinApiClient, WeixinApiError
+from app.pkg.weixin.models import WeixinMessage
+from app.pkg.weixin import WeixinApiClient, WeixinApiError
 
 
 @dataclass(slots=True)
