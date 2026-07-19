@@ -13,7 +13,6 @@ class ConversationMemoryRepository(Protocol):
     def list_recent_by_user(
         self,
         user_id: str,
-        chat_id: str,
         exclude_message_id: str | None = None,
     ) -> list[MemoryRecord]:
         ...
@@ -34,7 +33,6 @@ class ConversationMemoryRepository(Protocol):
     def search_similar_hits_by_user(
         self,
         user_id: str,
-        chat_id: str,
         query_vector: list[float],
         limit: int,
         start_time: datetime | None = None,
@@ -71,7 +69,6 @@ class ConversationMemoryRepository(Protocol):
     def list_message_windows_by_message_ids(
         self,
         user_id: str,
-        chat_id: str,
         message_ids: Collection[str],
         exclude_message_ids: Collection[str] | None = None,
     ) -> list[MemoryRecord]:

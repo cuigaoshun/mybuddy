@@ -28,23 +28,20 @@ class ConversationMemoryService:
     def list_recent_messages(
         self,
         user_id: str,
-        chat_id: str,
         exclude_message_id: str | None = None,
     ) -> list[MemoryRecord]:
-        """读取指定用户在当前会话下最近 10 条对话记忆。"""
-        return self._repository.list_recent_by_user(user_id, chat_id, exclude_message_id=exclude_message_id)
+        """读取指定用户最近 10 条对话记忆。"""
+        return self._repository.list_recent_by_user(user_id, exclude_message_id=exclude_message_id)
 
     def search_similar_messages(
         self,
         user_id: str,
-        chat_id: str,
         query_text: str,
         limit: int,
         exclude_message_ids: Collection[str] | None = None,
     ) -> list[MemoryRecord]:
         matched_records = self.retrieve_memory_hits(
             user_id=user_id,
-            chat_id=chat_id,
             query_text=query_text,
             limit=limit,
             exclude_message_ids=exclude_message_ids,
@@ -54,7 +51,6 @@ class ConversationMemoryService:
 
         return self.expand_memory_hits(
             user_id=user_id,
-            chat_id=chat_id,
             hits=matched_records,
             exclude_message_ids=exclude_message_ids,
         )
@@ -62,7 +58,6 @@ class ConversationMemoryService:
     def retrieve_memory_hits(
         self,
         user_id: str,
-        chat_id: str,
         query_text: str,
         limit: int,
         exclude_message_ids: Collection[str] | None = None,
@@ -74,7 +69,6 @@ class ConversationMemoryService:
         embedding = self._embedding_provider.embed_query(recent_question)
         return self._repository.search_similar_hits_by_user(
             user_id=user_id,
-            chat_id=chat_id,
             query_vector=embedding,
             limit=limit,
             exclude_message_ids=exclude_message_ids,
@@ -83,14 +77,12 @@ class ConversationMemoryService:
     def expand_memory_hits(
         self,
         user_id: str,
-        chat_id: str,
         hits: Collection[RetrievedMemoryHit],
         exclude_message_ids: Collection[str] | None = None,
     ) -> list[MemoryRecord]:
         matched_message_ids = [hit.record.message_id for hit in hits]
         return self._repository.list_message_windows_by_message_ids(
             user_id=user_id,
-            chat_id=chat_id,
             message_ids=matched_message_ids,
             exclude_message_ids=exclude_message_ids,
         )

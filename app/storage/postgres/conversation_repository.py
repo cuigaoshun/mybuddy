@@ -74,10 +74,9 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
     def list_recent_by_user(
         self,
         user_id: str,
-        chat_id: str,
         exclude_message_id: str | None = None,
     ) -> list[MemoryRecord]:
-        """按用户与会话查询最近 10 条会话记忆。"""
+        """按用户查询最近 10 条对话记忆。"""
         statement = (
             select(
                 self._table.c.id,
@@ -92,7 +91,6 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
             )
             .where(
                 self._table.c.user_id == user_id,
-                self._table.c.chat_id == chat_id,
             )
             .order_by(desc(self._table.c.message_time), desc(self._table.c.id))
             .limit(RECENT_MESSAGE_LIMIT)
@@ -176,7 +174,6 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
     def search_similar_hits_by_user(
         self,
         user_id: str,
-        chat_id: str,
         query_vector: list[float],
         limit: int,
         start_time: datetime | None = None,
@@ -200,7 +197,6 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
             )
             .where(
                 self._table.c.user_id == user_id,
-                self._table.c.chat_id == chat_id,
             )
             .order_by(desc(score), desc(self._table.c.id))
             .limit(limit)
@@ -346,7 +342,6 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
     def list_message_windows_by_message_ids(
         self,
         user_id: str,
-        chat_id: str,
         message_ids: Collection[str],
         exclude_message_ids: Collection[str] | None = None,
     ) -> list[MemoryRecord]:
@@ -372,7 +367,6 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
             )
             .where(
                 self._table.c.user_id == user_id,
-                self._table.c.chat_id == chat_id,
             )
             .subquery()
         )
