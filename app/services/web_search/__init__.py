@@ -1,3 +1,3 @@
-from app.services.web_search.service import ExaWebSearchService, WebSearchResult
+from app.services.web_search.service import WebSearchResult, WebSearchService
 
-__all__ = ["ExaWebSearchService", "WebSearchResult"]
+__all__ = ["WebSearchResult", "WebSearchService"]

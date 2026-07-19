@@ -116,14 +116,14 @@ def _build_user_memory(
 ) -> UserMemory:
     """把摘要、画像和系统字段重新组装成最终长期记忆快照。"""
 
-    last_processed_message_id = state.conversation_records[-1].message_id if state.conversation_records else (
-        existing_user_memory.last_processed_message_id if existing_user_memory is not None else None
+    last_processed_record_id = state.conversation_records[-1].record_id if state.conversation_records else (
+        existing_user_memory.last_processed_record_id if existing_user_memory is not None else None
     )
     return UserMemory(
         user_id=state.session.user_id,
         long_term_memory_summary=merged_summary,
         user_profile=merged_profile,
-        last_processed_message_id=last_processed_message_id,
+        last_processed_record_id=last_processed_record_id,
         version=(existing_user_memory.version + 1) if existing_user_memory is not None else 1,
         created_at=existing_user_memory.created_at if existing_user_memory is not None else build_now(),
         updated_at=build_now(),

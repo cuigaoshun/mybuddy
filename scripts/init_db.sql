@@ -89,39 +89,35 @@ USING gin (to_tsvector('simple', coalesce(content->>'text', '')));
 CREATE TABLE IF NOT EXISTS public.chat_session_info (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id uuid NOT NULL,
-    im_type text NOT NULL,
-    chat_id text NOT NULL,
     first_reply_time timestamptz NULL,
     latest_reply_time timestamptz NULL,
     reply_lease_owner text NULL,
     reply_lease_until timestamptz NULL
 );
 
-COMMENT ON TABLE public.chat_session_info IS '会话信息表，维护 user_id + im_type + chat_id 维度的回复状态与租约';
+COMMENT ON TABLE public.chat_session_info IS '会话信息表，维护 user_id 维度的回复状态与租约';
 COMMENT ON COLUMN public.chat_session_info.id IS '主键，自增标识';
 COMMENT ON COLUMN public.chat_session_info.user_id IS '系统统一用户标识，值来自第三方身份映射';
-COMMENT ON COLUMN public.chat_session_info.im_type IS 'IM 平台类型，一期固定为 feishu';
-COMMENT ON COLUMN public.chat_session_info.chat_id IS '会话标识';
 COMMENT ON COLUMN public.chat_session_info.first_reply_time IS '该会话第一次被成功回复覆盖的用户消息时间';
 COMMENT ON COLUMN public.chat_session_info.latest_reply_time IS '该会话最近一次被成功回复覆盖的用户消息时间';
 COMMENT ON COLUMN public.chat_session_info.reply_lease_owner IS '当前回复租约持有者';
 COMMENT ON COLUMN public.chat_session_info.reply_lease_until IS '当前回复租约过期时间';
 
-CREATE UNIQUE INDEX IF NOT EXISTS uidx_chat_session_info_user_id_im_type_chat_id
-ON public.chat_session_info (user_id, im_type, chat_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uidx_chat_session_info_user_id
+ON public.chat_session_info (user_id);
 
 -- 6. 创建用户级长期记忆表。
 -- 说明：
 -- - 长期记忆按 user_id + im_type 维度维护，不挂在 chat_session_info 上。
 -- - long_term_memory_summary 保存可直接注入上下文的长期记忆摘要。
 -- - user_profile_json 保存结构化用户属性，当前建议包含 profile / preferences / relationship 三个顶层对象。
--- - last_processed_message_id 用于后续增量整理游标。
+-- - last_processed_record_id 保存最近一次已处理 chat_memory 主键，用于精确增量整理游标。
 CREATE TABLE IF NOT EXISTS public.user_memory (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id uuid NOT NULL,
     long_term_memory_summary text NULL,
     user_profile_json jsonb NOT NULL DEFAULT '{"profile": {}, "preferences": {}, "relationship": {}}'::jsonb,
-    last_processed_message_id text NULL,
+    last_processed_record_id bigint NULL,
     version integer NOT NULL DEFAULT 1,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
@@ -134,7 +130,7 @@ COMMENT ON COLUMN public.user_memory.id IS '主键，自增标识';
 COMMENT ON COLUMN public.user_memory.user_id IS '系统统一用户标识，值来自第三方身份映射';
 COMMENT ON COLUMN public.user_memory.long_term_memory_summary IS '供上下文注入使用的长期记忆摘要';
 COMMENT ON COLUMN public.user_memory.user_profile_json IS '结构化用户属性，当前建议包含 profile/preferences/relationship';
-COMMENT ON COLUMN public.user_memory.last_processed_message_id IS '最近一次已进入长期记忆整理流程的消息游标';
+COMMENT ON COLUMN public.user_memory.last_processed_record_id IS '最近一次已进入长期记忆整理流程的 chat_memory 主键游标';
 COMMENT ON COLUMN public.user_memory.version IS '长期记忆版本号，用于后续合并或幂等控制';
 COMMENT ON COLUMN public.user_memory.created_at IS '记录创建时间';
 COMMENT ON COLUMN public.user_memory.updated_at IS '记录最近更新时间';
@@ -145,8 +141,8 @@ ON public.user_memory (user_id);
 CREATE INDEX IF NOT EXISTS idx_user_memory_updated_at
 ON public.user_memory (updated_at);
 
-CREATE INDEX IF NOT EXISTS idx_user_memory_last_processed_message_id
-ON public.user_memory (last_processed_message_id);
+CREATE INDEX IF NOT EXISTS idx_user_memory_last_processed_record_id
+ON public.user_memory (last_processed_record_id);
 
 -- 7. 创建微信账号运行态表。
 -- 一期约束：一个微信 bot 账号只对应一个微信用户聊天对端。

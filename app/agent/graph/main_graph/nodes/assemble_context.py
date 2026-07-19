@@ -24,9 +24,9 @@ def assemble_context_node(state: ReplyState, context: GraphRuntimeContext) -> di
             system_prompt=SYSTEM_PROMPT,
             current_message=state.message,
             session_snapshot=ContextSessionSnapshot(
-                chat_id=state.session_info.chat_id,
+                chat_id=state.message.chat_id,
                 chat_type=state.message.chat_type,
-                im_type=state.session_info.im_type,
+                im_type=state.message.im_type,
                 first_reply_time=state.session_info.first_reply_time,
                 latest_reply_time=state.session_info.latest_reply_time,
             ),

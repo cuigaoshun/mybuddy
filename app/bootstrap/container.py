@@ -10,7 +10,7 @@ from app.bootstrap.feishu import create_feishu_client
 from app.bootstrap.listener import Listener
 from app.bootstrap.postgres import get_engine
 from app.bootstrap.wechat import create_wechat_poller_runner
-from app.core.config import AppRuntimeConfig, ExaConfig, LlmConfig
+from app.core.config import AppRuntimeConfig, LlmConfig, WebSearchConfig
 from app.event.bus import EventBus
 from app.gateway.dispatch import FeishuDispatcher, WeChatDispatcher
 from app.storage.embeddings import SentenceTransformerEmbeddingProvider
@@ -29,7 +29,7 @@ from app.storage.wechat_account_service import WeChatAccountService
 from app.router.session_manager import SessionManager
 from app.services.llm import create_chat_model
 from app.services.im_sender import CompositeMessageSender, FeishuMessageSender, WeChatMessageSender
-from app.services.web_search import ExaWebSearchService
+from app.services.web_search import WebSearchService
 from app.workers.memory_scheduler import MemorySchedulerRunner
 from app.pkg.weixin import WeixinApiClient
 
@@ -51,8 +51,8 @@ class AppContainer(containers.DeclarativeContainer):
     # LLM 配置对象。
     llm_config = providers.Dependency(instance_of=LlmConfig)
 
-    # Exa 配置对象。
-    exa_config = providers.Dependency(instance_of=ExaConfig)
+    # 网页搜索配置对象。
+    web_search_config = providers.Dependency(instance_of=WebSearchConfig)
 
     # 全局事件总线对象。
     event_bus = providers.Dependency(instance_of=EventBus)
@@ -117,7 +117,7 @@ class AppContainer(containers.DeclarativeContainer):
     llm_provider = providers.Singleton(LLMProvider, base_model=chat_model)
 
     # 网页搜索服务，应用生命周期内复用。
-    web_search_service = providers.Singleton(ExaWebSearchService, config=exa_config)
+    web_search_service = providers.Singleton(WebSearchService, config=web_search_config)
 
     # 图装配阶段依赖的业务服务聚合。
     graph_services = providers.Singleton(

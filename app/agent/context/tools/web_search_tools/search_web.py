@@ -3,7 +3,7 @@ from __future__ import annotations
 from langchain_core.tools import tool
 
 from app.agent.context.tools.models import RegisteredTool, ToolDefinition
-from app.services.web_search import ExaWebSearchService, WebSearchResult
+from app.services.web_search import WebSearchResult, WebSearchService
 
 from .models import WEB_SEARCH_TOOLS_CATEGORY, WebSearchToolInput
 
@@ -12,7 +12,7 @@ class WebSearchToolDefinition(ToolDefinition):
     """统一封装网页搜索工具的构建逻辑。"""
 
     @classmethod
-    def build(cls, web_search_service: ExaWebSearchService) -> RegisteredTool:
+    def build(cls, web_search_service: WebSearchService) -> RegisteredTool:
         """基于网页搜索服务构建网页搜索工具注册条目。"""
 
         @tool("search_web", args_schema=WebSearchToolInput)

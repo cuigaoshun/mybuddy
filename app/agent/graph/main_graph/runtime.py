@@ -7,7 +7,7 @@ from app.agent.context.tools.registry import ToolRegistry
 from app.storage.service import ConversationMemoryService
 from app.storage.user_memory_service import UserMemoryService
 from app.services.llm import ChatModel
-from app.services.web_search import ExaWebSearchService
+from app.services.web_search import WebSearchService
 
 
 @dataclass(frozen=True)
@@ -36,4 +36,4 @@ class GraphServices:
 
     conversation_memory_service: ConversationMemoryService
     user_memory_service: UserMemoryService
-    web_search_service: ExaWebSearchService
+    web_search_service: WebSearchService

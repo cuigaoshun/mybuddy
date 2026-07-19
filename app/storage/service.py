@@ -87,19 +87,15 @@ class ConversationMemoryService:
             exclude_message_ids=exclude_message_ids,
         )
 
-    def list_messages_after_message_id(
+    def list_messages_after_record_id(
         self,
         user_id: str,
-        im_type: str,
-        chat_id: str,
-        after_message_id: str | None,
+        after_record_id: int | None,
         limit: int,
     ) -> list[MemoryRecord]:
-        return self._repository.list_after_message_id(
+        return self._repository.list_after_record_id(
             user_id=user_id,
-            im_type=im_type,
-            chat_id=chat_id,
-            after_message_id=after_message_id,
+            after_record_id=after_record_id,
             limit=limit,
         )
 

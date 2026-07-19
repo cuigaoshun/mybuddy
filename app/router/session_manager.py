@@ -55,8 +55,6 @@ class SessionManager:
 
         lease_owner = self._chat_session_info_service.acquire_reply_lease(
             user_id=user_id,
-            im_type=resolved_message.im_type,
-            chat_id=resolved_message.chat_id,
         )
         if lease_owner is None:
             logger.info(
@@ -67,8 +65,6 @@ class SessionManager:
 
         session_info = self._chat_session_info_service.get_session_info(
             user_id=user_id,
-            im_type=resolved_message.im_type,
-            chat_id=resolved_message.chat_id,
         )
 
         first_reply_time = None
@@ -121,8 +117,6 @@ class SessionManager:
                     logger.exception("清理输入中状态失败，message_id={message_id}", message_id=resolved_message.message_id)
             self._chat_session_info_service.update_session_info(
                 user_id=user_id,
-                im_type=resolved_message.im_type,
-                chat_id=resolved_message.chat_id,
                 first_reply_time=first_reply_time,
                 latest_reply_time=latest_reply_time,
                 clear_lease_owner=lease_owner,

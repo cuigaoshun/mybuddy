@@ -24,27 +24,21 @@ class PostgresChatSessionInfoRepository(ChatSessionInfoRepository):
             self._metadata,
             Column("id", BigInteger, Identity(always=True), primary_key=True),
             Column("user_id", Uuid(as_uuid=False), nullable=False),
-            Column("im_type", Text, nullable=False),
-            Column("chat_id", Text, nullable=False),
             Column("first_reply_time", DateTime(timezone=True), nullable=True),
             Column("latest_reply_time", DateTime(timezone=True), nullable=True),
             Column("reply_lease_owner", Text, nullable=True),
             Column("reply_lease_until", DateTime(timezone=True), nullable=True),
             Index(
-                "uidx_chat_session_info_user_id_im_type_chat_id",
+                "uidx_chat_session_info_user_id",
                 "user_id",
-                "im_type",
-                "chat_id",
                 unique=True,
             ),
         )
 
-    def get_session_info(self, user_id: str, im_type: str, chat_id: str) -> ChatSessionInfo:
+    def get_session_info(self, user_id: str) -> ChatSessionInfo:
         statement = (
             select(
                 self._table.c.user_id,
-                self._table.c.im_type,
-                self._table.c.chat_id,
                 self._table.c.first_reply_time,
                 self._table.c.latest_reply_time,
                 self._table.c.reply_lease_owner,
@@ -52,8 +46,6 @@ class PostgresChatSessionInfoRepository(ChatSessionInfoRepository):
             )
             .where(
                 self._table.c.user_id == user_id,
-                self._table.c.im_type == im_type,
-                self._table.c.chat_id == chat_id,
             )
             .limit(1)
         )
@@ -61,11 +53,9 @@ class PostgresChatSessionInfoRepository(ChatSessionInfoRepository):
         with self._engine.begin() as connection:
             row = connection.execute(statement).mappings().one_or_none()
         if row is None:
-            return ChatSessionInfo(user_id=user_id, im_type=im_type, chat_id=chat_id)
+            return ChatSessionInfo(user_id=user_id)
         return ChatSessionInfo(
             user_id=row["user_id"],
-            im_type=row["im_type"],
-            chat_id=row["chat_id"],
             first_reply_time=row["first_reply_time"],
             latest_reply_time=row["latest_reply_time"],
             lease_owner=row["reply_lease_owner"],
@@ -75,8 +65,6 @@ class PostgresChatSessionInfoRepository(ChatSessionInfoRepository):
     def try_acquire_reply_lease(
         self,
         user_id: str,
-        im_type: str,
-        chat_id: str,
         lease_owner: str,
         lease_until: datetime,
     ) -> bool:
@@ -84,21 +72,17 @@ class PostgresChatSessionInfoRepository(ChatSessionInfoRepository):
         now = datetime.now(UTC)
         insert_statement = insert(self._table).values(
             user_id=user_id,
-            im_type=im_type,
-            chat_id=chat_id,
             reply_lease_owner=lease_owner,
             reply_lease_until=normalized_lease_until,
         )
         insert_statement = insert_statement.on_conflict_do_nothing(
-            index_elements=["user_id", "im_type", "chat_id"],
+            index_elements=["user_id"],
         ).returning(self._table.c.id)
 
         update_statement = (
             update(self._table)
             .where(
                 self._table.c.user_id == user_id,
-                self._table.c.im_type == im_type,
-                self._table.c.chat_id == chat_id,
                 or_(
                     self._table.c.reply_lease_until.is_(None),
                     self._table.c.reply_lease_until < now,
@@ -120,8 +104,6 @@ class PostgresChatSessionInfoRepository(ChatSessionInfoRepository):
     def update_session_info(
         self,
         user_id: str,
-        im_type: str,
-        chat_id: str,
         first_reply_time: datetime | None = None,
         latest_reply_time: datetime | None = None,
         clear_lease_owner: str | None = None,
@@ -131,13 +113,11 @@ class PostgresChatSessionInfoRepository(ChatSessionInfoRepository):
 
         statement = insert(self._table).values(
             user_id=user_id,
-            im_type=im_type,
-            chat_id=chat_id,
             first_reply_time=normalized_first_reply_time,
             latest_reply_time=normalized_latest_reply_time,
         )
         statement = statement.on_conflict_do_update(
-            index_elements=["user_id", "im_type", "chat_id"],
+            index_elements=["user_id"],
             set_={
                 "first_reply_time": case(
                     (self._table.c.first_reply_time.is_(None), normalized_first_reply_time),
@@ -169,8 +149,6 @@ class PostgresChatSessionInfoRepository(ChatSessionInfoRepository):
         statement = (
             select(
                 self._table.c.user_id,
-                self._table.c.im_type,
-                self._table.c.chat_id,
                 self._table.c.latest_reply_time,
             )
             .where(
@@ -187,8 +165,6 @@ class PostgresChatSessionInfoRepository(ChatSessionInfoRepository):
         return [
             PendingMemorySession(
                 user_id=row["user_id"],
-                im_type=row["im_type"],
-                chat_id=row["chat_id"],
                 latest_reply_time=row["latest_reply_time"],
             )
             for row in rows

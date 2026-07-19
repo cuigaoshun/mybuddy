@@ -420,26 +420,21 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
             for row in rows
         ]
 
-    def list_after_message_id(
+    def list_after_record_id(
         self,
         user_id: str,
-        im_type: str,
-        chat_id: str,
-        after_message_id: str | None,
+        after_record_id: int | None,
         limit: int,
     ) -> list[MemoryRecord]:
         cursor_statement = None
-        if after_message_id is not None:
+        if after_record_id is not None:
             cursor_statement = (
                 select(
-                    self._table.c.message_time.label("cursor_message_time"),
                     self._table.c.id.label("cursor_id"),
                 )
                 .where(
                     self._table.c.user_id == user_id,
-                    self._table.c.im_type == im_type,
-                    self._table.c.chat_id == chat_id,
-                    self._table.c.message_id == after_message_id,
+                    self._table.c.id == after_record_id,
                 )
                 .order_by(desc(self._table.c.id))
                 .limit(1)
@@ -462,20 +457,12 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
             )
             .where(
                 self._table.c.user_id == user_id,
-                self._table.c.im_type == im_type,
-                self._table.c.chat_id == chat_id,
             )
-            .order_by(self._table.c.message_time, self._table.c.id)
+            .order_by(self._table.c.id)
             .limit(limit)
         )
         if cursor_row is not None:
-            statement = statement.where(
-                (self._table.c.message_time > cursor_row["cursor_message_time"])
-                | (
-                    (self._table.c.message_time == cursor_row["cursor_message_time"])
-                    & (self._table.c.id > cursor_row["cursor_id"])
-                )
-            )
+            statement = statement.where(self._table.c.id > cursor_row["cursor_id"])
 
         with self._engine.begin() as connection:
             rows = connection.execute(statement).mappings().all()
@@ -490,6 +477,7 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
                 message_time=row["message_time"],
                 content_type=row["content_type"],
                 content=row["content"],
+                record_id=row["id"],
             )
             for row in rows
         ]

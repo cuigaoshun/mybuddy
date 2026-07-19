@@ -22,6 +22,7 @@ class MemoryRecord:
     message_time: datetime  # 消息时间，统一使用带时区时间
     content_type: str  # 内容类型，一期固定为 text
     content: dict[str, object]  # JSON 内容，一期结构为 {"text": "..."}
+    record_id: int | None = None  # chat_memory 主键，仅仓储回读时可用
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,8 +36,6 @@ class ChatSessionInfo:
     """会话详情模型，承载会话级元信息与租约状态。"""
 
     user_id: str
-    im_type: str
-    chat_id: str
     first_reply_time: datetime | None = None
     latest_reply_time: datetime | None = None
     lease_owner: str | None = None
@@ -119,7 +118,7 @@ class UserMemory:
     user_id: str
     long_term_memory_summary: str | None
     user_profile: UserMemoryProfile
-    last_processed_message_id: str | None
+    last_processed_record_id: int | None
     version: int
     created_at: datetime
     updated_at: datetime
@@ -130,8 +129,6 @@ class PendingMemorySession:
     """待做长期记忆整理的会话。"""
 
     user_id: str
-    im_type: str
-    chat_id: str
     latest_reply_time: datetime
 
 

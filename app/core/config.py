@@ -118,17 +118,30 @@ class LlmConfig(BaseModel):
         return value
 
 
-class ExaConfig(BaseModel):
+class WebSearchConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     api_key: str = ""
+    endpoint: str = ""
+    protocol: str = "http"
+    workspace: str = "default"
+    service_id: str = "ops-web-search-001"
     default_limit: int = Field(default=5, ge=1, le=10)
+    query_rewrite: bool = True
+    content_type: str = "snippet"
 
-    @field_validator("api_key", mode="before")
+    @field_validator("api_key", "endpoint", "protocol", "workspace", "service_id", "content_type", mode="before")
     @classmethod
     def strip_optional_string_value(cls, value: object) -> object:
         if isinstance(value, str):
             return value.strip()
+        return value
+
+    @field_validator("content_type")
+    @classmethod
+    def validate_content_type(cls, value: str) -> str:
+        if value not in {"snippet", "summary", "mainText"}:
+            raise ValueError("content_type 只能是 snippet、summary 或 mainText")
         return value
 
 
@@ -139,7 +152,7 @@ class AppConfig(BaseModel):
     feishu: FeishuConfig
     postgres: PostgresConfig
     llm: LlmConfig
-    exa: ExaConfig
+    web_search: WebSearchConfig
 
 
 def init_config(config_path: Path = DEFAULT_CONFIG_PATH) -> AppConfig:
@@ -174,8 +187,14 @@ def init_config(config_path: Path = DEFAULT_CONFIG_PATH) -> AppConfig:
             base_url=settings.get("llm.base_url"),
             temperature=settings.get("llm.temperature", 0.7),
         ),
-        exa=ExaConfig(
-            api_key=settings.get("exa.api_key", ""),
-            default_limit=settings.get("exa.default_limit", 5),
+        web_search=WebSearchConfig(
+            api_key=settings.get("web_search.api_key", ""),
+            endpoint=settings.get("web_search.endpoint", ""),
+            protocol=settings.get("web_search.protocol", "http"),
+            workspace=settings.get("web_search.workspace", "default"),
+            service_id=settings.get("web_search.service_id", "ops-web-search-001"),
+            default_limit=settings.get("web_search.default_limit", 5),
+            query_rewrite=settings.get("web_search.query_rewrite", True),
+            content_type=settings.get("web_search.content_type", "snippet"),
         ),
     )

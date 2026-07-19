@@ -74,26 +74,22 @@ class ConversationMemoryRepository(Protocol):
     ) -> list[MemoryRecord]:
         ...
 
-    def list_after_message_id(
+    def list_after_record_id(
         self,
         user_id: str,
-        im_type: str,
-        chat_id: str,
-        after_message_id: str | None,
+        after_record_id: int | None,
         limit: int,
     ) -> list[MemoryRecord]:
         ...
 
 
 class ChatSessionInfoRepository(Protocol):
-    def get_session_info(self, user_id: str, im_type: str, chat_id: str) -> ChatSessionInfo:
+    def get_session_info(self, user_id: str) -> ChatSessionInfo:
         ...
 
     def try_acquire_reply_lease(
         self,
         user_id: str,
-        im_type: str,
-        chat_id: str,
         lease_owner: str,
         lease_until: datetime,
     ) -> bool:
@@ -102,8 +98,6 @@ class ChatSessionInfoRepository(Protocol):
     def update_session_info(
         self,
         user_id: str,
-        im_type: str,
-        chat_id: str,
         first_reply_time: datetime | None = None,
         latest_reply_time: datetime | None = None,
         clear_lease_owner: str | None = None,

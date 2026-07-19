@@ -19,6 +19,12 @@ api_key = ""
 base_url = ""
 temperature = 0.7
 
-[exa]
+[web_search]
 api_key = ""
+endpoint = "default-gb5h.platform-cn-shanghai.opensearch.aliyuncs.com"
+protocol = "http"
+workspace = "default"
+service_id = "ops-web-search-001"
 default_limit = 5
+query_rewrite = false
+content_type = "snippet"

@@ -16,13 +16,11 @@ def load_conversation_node(state: MemoryGraphState, context: MemoryGraphRuntimeC
     existing_user_memory = context.services.user_memory_service.get_user_memory(
         user_id=state.session.user_id,
     )
-    after_message_id = existing_user_memory.last_processed_message_id if existing_user_memory is not None else None
+    after_record_id = existing_user_memory.last_processed_record_id if existing_user_memory is not None else None
     conversation_records = tuple(
-        context.services.conversation_memory_service.list_messages_after_message_id(
+        context.services.conversation_memory_service.list_messages_after_record_id(
             user_id=state.session.user_id,
-            im_type=state.session.im_type,
-            chat_id=state.session.chat_id,
-            after_message_id=after_message_id,
+            after_record_id=after_record_id,
             limit=50,
         )
     )

@@ -44,7 +44,7 @@ if __name__ == "__main__":
     container.feishu_config.override(providers.Object(config.feishu))
     container.postgres_config.override(providers.Object(config.postgres))
     container.llm_config.override(providers.Object(config.llm))
-    container.exa_config.override(providers.Object(config.exa))
+    container.web_search_config.override(providers.Object(config.web_search))
     container.event_bus.override(providers.Object(EventBus()))
 
     output_path = Path("./main-agent-graph.png")
