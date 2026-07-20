@@ -93,7 +93,6 @@ class PostgresWeChatAccountRepository(WeChatAccountRepository):
 
     def refresh_pending_login(self, user_id: str, qrcode: str, qrcode_status: str) -> WeChatAccount:
         now = datetime.now(UTC)
-        # 重扫同一内部用户时，覆盖旧二维码并清空上一次运行态缓存。
         statement = (
             update(self._table)
             .where(self._table.c.user_id == user_id)
@@ -103,7 +102,6 @@ class PostgresWeChatAccountRepository(WeChatAccountRepository):
                 bot_account_id=None,
                 third_party_user_id=None,
                 bot_token=None,
-                get_updates_buf=None,
                 context_token=None,
                 typing_ticket=None,
                 source_message_id=None,
