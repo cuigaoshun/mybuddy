@@ -18,11 +18,18 @@ class AppRuntimeConfig(BaseModel):
     env: str = ENVIRONMENT_DEVELOPMENT
     timezone: str = "Asia/Shanghai"
 
-    @field_validator("env", "timezone", mode="before")
+    @field_validator("env", mode="before")
     @classmethod
     def normalize_environment(cls, value: object) -> object:
         if isinstance(value, str):
             return value.strip().lower()
+        return value
+
+    @field_validator("timezone", mode="before")
+    @classmethod
+    def normalize_timezone(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip()
         return value
 
     @field_validator("env")

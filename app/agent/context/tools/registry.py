@@ -61,17 +61,18 @@ class ToolRegistry:
     def list_non_core_categories(self) -> tuple[ToolCategory, ...]:
         """返回所有非核心工具所属的大类信息。"""
 
-        # 用类别名做键去重。
-        categories: dict[str, ToolCategory] = {}
+        categories: dict[str, list[RegisteredTool]] = {}
         # 逐个遍历已注册工具。
         for registered_tool in self._tools.values():
             # 核心工具不参与非核心大类列表。
             if registered_tool.name in self._core_tool_names:
                 continue
-            # 记录当前非核心工具所属类别。
-            categories[registered_tool.category.name] = registered_tool.category
+            categories.setdefault(registered_tool.category.name, []).append(registered_tool)
         # 返回去重后的大类集合。
-        return tuple(categories.values())
+        return tuple(
+            _build_category_with_tool_summaries(registered_tools)
+            for registered_tools in categories.values()
+        )
 
     def list_category_tool_names(self, category_name: ToolCategoryName) -> tuple[str, ...]:
         """返回某个工具大类下的工具名集合。"""
@@ -92,3 +93,16 @@ class ToolRegistry:
         """返回多个工具大类合并后的工具对象集合。"""
 
         return self.get_tools(self.list_categories_tool_names(category_names))
+
+
+def _build_category_with_tool_summaries(registered_tools: list[RegisteredTool]) -> ToolCategory:
+    base_category = registered_tools[0].category
+    tool_lines = [
+        f"{index}. {registered_tool.name}：{registered_tool.description}"
+        for index, registered_tool in enumerate(registered_tools, start=1)
+    ]
+    return ToolCategory(
+        name=base_category.name,
+        title=base_category.title,
+        description=base_category.description + " 可用子工具包括：" + "；".join(tool_lines),
+    )

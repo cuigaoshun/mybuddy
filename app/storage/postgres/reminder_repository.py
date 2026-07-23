@@ -35,22 +35,22 @@ class PostgresReminderRepository(ReminderRepository):
         self._job_table = reminder_tables.job_table
 
     def create_schedule(self, schedule: ReminderSchedule) -> ReminderSchedule:
-        statement = insert(self._schedule_table).values(**build_schedule_insert_values(schedule)).returning(*self._schedule_table.c)
+        statement = insert(self._schedule_table).values(**_build_schedule_insert_values(schedule)).returning(*self._schedule_table.c)
         with self._engine.begin() as connection:
             row = connection.execute(statement).mappings().one()
-        return to_schedule(row)
+        return _to_schedule(row)
 
     def create_once_schedule_with_job(self, schedule: ReminderSchedule, job: ReminderJob) -> CreatedReminder:
         with self._engine.begin() as connection:
             schedule_row = connection.execute(
                 insert(self._schedule_table)
-                .values(**build_schedule_insert_values(schedule))
+                .values(**_build_schedule_insert_values(schedule))
                 .returning(*self._schedule_table.c)
             ).mappings().one()
-            created_schedule = to_schedule(schedule_row)
+            created_schedule = _to_schedule(schedule_row)
             if created_schedule.id is None:
                 raise RuntimeError("提醒规则创建失败，缺少主键")
-            created_job_values = build_job_insert_values(job)
+            created_job_values = _build_job_insert_values(job)
             created_job_values.pop("schedule_id", None)
             created_job_values.pop("dedupe_key", None)
             created_job_row = connection.execute(
@@ -62,13 +62,13 @@ class PostgresReminderRepository(ReminderRepository):
                 )
                 .returning(*self._job_table.c)
             ).mappings().one()
-        return CreatedReminder(schedule=created_schedule, first_job=to_job(created_job_row))
+        return CreatedReminder(schedule=created_schedule, first_job=_to_job(created_job_row))
 
     def create_job(self, job: ReminderJob) -> ReminderJob:
-        statement = insert(self._job_table).values(**build_job_insert_values(job)).returning(*self._job_table.c)
+        statement = insert(self._job_table).values(**_build_job_insert_values(job)).returning(*self._job_table.c)
         with self._engine.begin() as connection:
             row = connection.execute(statement).mappings().one()
-        return to_job(row)
+        return _to_job(row)
 
     def materialize_due_recurring_jobs(self, now: datetime, limit: int) -> tuple[int, ...]:
         normalized_now = _normalize_datetime(now)
@@ -88,7 +88,7 @@ class PostgresReminderRepository(ReminderRepository):
         with self._engine.begin() as connection:
             schedules = connection.execute(schedule_statement).mappings().all()
             for row in schedules:
-                schedule = to_schedule(row)
+                schedule = _to_schedule(row)
                 scheduled_for = row["next_run_at"]
                 if scheduled_for is None or schedule.id is None:
                     continue
@@ -167,12 +167,12 @@ class PostgresReminderRepository(ReminderRepository):
         return tuple(claimed_job_ids)
 
     def get_execution_bundle(self, job_id: int) -> ReminderExecutionBundle | None:
-        statement = build_execution_bundle_statement(self._job_table, self._schedule_table, job_id)
+        statement = _build_execution_bundle_statement(self._job_table, self._schedule_table, job_id)
         with self._engine.begin() as connection:
             row = connection.execute(statement).mappings().one_or_none()
         if row is None:
             return None
-        return ReminderExecutionBundle(schedule=to_schedule(row), job=to_job(row))
+        return ReminderExecutionBundle(schedule=_to_schedule(row), job=_to_job(row))
 
     def mark_job_sent(self, job_id: int, sent_message_id: str, sent_at: datetime) -> None:
         normalized_sent_at = _normalize_datetime(sent_at)
@@ -385,7 +385,7 @@ def _build_execution_bundle_statement(job_table, schedule_table, job_id: int):
     )
 
 
-def to_schedule(row) -> ReminderSchedule:
+def _to_schedule(row) -> ReminderSchedule:
     return ReminderSchedule(
         id=row.get("schedule_id_value", row.get("id")),
         user_id=row["user_id"],
@@ -408,7 +408,7 @@ def to_schedule(row) -> ReminderSchedule:
     )
 
 
-def to_job(row) -> ReminderJob:
+def _to_job(row) -> ReminderJob:
     return ReminderJob(
         id=row.get("job_id", row.get("id")),
         schedule_id=row["schedule_id"],

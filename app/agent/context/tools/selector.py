@@ -7,11 +7,13 @@ from langgraph.types import Command
 from app.agent.graph.main_graph.constants import SELECT_TOOL_CATEGORY_TOOL_NAME
 
 from .models import SelectToolCategoryInput, ToolCategory, ToolCategoryName, ToolCategorySelection
+from .prompts import build_tool_selector_description
 
 
 def build_category_selector_tool(categories: tuple[ToolCategory, ...]) -> BaseTool:
     # 先把当前允许模型选择的非核心工具大类收成集合，便于后续快速过滤非法值。
     allowed_category_names = {category.name for category in categories}
+    selector_description = build_tool_selector_description(categories)
 
     # 定义一个只负责声明“我想选哪个大类”的工具壳。
     @tool(SELECT_TOOL_CATEGORY_TOOL_NAME, args_schema=SelectToolCategoryInput)
@@ -24,6 +26,8 @@ def build_category_selector_tool(categories: tuple[ToolCategory, ...]) -> BaseTo
             return Command(update={"selected_tool_category": None})
         # 正常情况下把合法类别元组写回图状态，供后续工具暴露与执行节点使用。
         return Command(update={"selected_tool_category": selected_category_names})
+
+    select_tool_category_tool.description = selector_description
 
     # 返回构建好的工具选择器。
     return select_tool_category_tool
