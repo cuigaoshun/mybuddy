@@ -5,6 +5,7 @@ from typing import Collection
 
 from app.storage.embeddings import EmbeddingProvider
 from app.storage.models import ConversationHistoryQuery, HistorySearchResult, MemoryRecord, RetrievedMemoryHit
+from app.storage.reminder_models import ReminderConversationContext
 from app.storage.repositories import ConversationMemoryRepository
 
 
@@ -97,6 +98,38 @@ class ConversationMemoryService:
             user_id=user_id,
             after_record_id=after_record_id,
             limit=limit,
+        )
+
+    def build_reminder_context(
+        self,
+        user_id: str,
+        im_type: str,
+        chat_id: str,
+        source_message_id: str,
+    ) -> ReminderConversationContext:
+        """构建 reminder 文案生成所需的来源窗口与最新对话上下文。"""
+
+        source_window_records = tuple(
+            self._repository.list_message_windows_by_message_ids(
+                user_id=user_id,
+                message_ids=[source_message_id],
+                window_radius=2,
+            )
+        )
+        latest_records = tuple(
+            self._repository.list_by_time_range(
+                user_id=user_id,
+                im_type=im_type,
+                chat_id=chat_id,
+                start_time=None,
+                end_time=None,
+                limit=6,
+                exclude_message_ids=[source_message_id],
+            )
+        )
+        return ReminderConversationContext(
+            source_window_records=source_window_records,
+            latest_records=latest_records,
         )
 
     def search_history(self, query: ConversationHistoryQuery) -> list[HistorySearchResult]:

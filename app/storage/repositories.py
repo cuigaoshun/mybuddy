@@ -70,6 +70,7 @@ class ConversationMemoryRepository(Protocol):
         self,
         user_id: str,
         message_ids: Collection[str],
+        window_radius: int = 1,
         exclude_message_ids: Collection[str] | None = None,
     ) -> list[MemoryRecord]:
         ...

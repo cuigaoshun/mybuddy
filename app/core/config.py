@@ -16,8 +16,9 @@ class AppRuntimeConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     env: str = ENVIRONMENT_DEVELOPMENT
+    timezone: str = "Asia/Shanghai"
 
-    @field_validator("env", mode="before")
+    @field_validator("env", "timezone", mode="before")
     @classmethod
     def normalize_environment(cls, value: object) -> object:
         if isinstance(value, str):
@@ -29,6 +30,13 @@ class AppRuntimeConfig(BaseModel):
     def validate_environment(cls, value: str) -> str:
         if value not in {ENVIRONMENT_DEVELOPMENT, ENVIRONMENT_PRODUCTION}:
             raise ValueError("环境只能是 dev 或 prod")
+        return value
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, value: str) -> str:
+        if value == "":
+            raise ValueError("timezone 不能为空")
         return value
 
     @property
@@ -165,6 +173,7 @@ def init_config(config_path: Path = DEFAULT_CONFIG_PATH) -> AppConfig:
     return AppConfig(
         app=AppRuntimeConfig(
             env=settings.get("app.env", ENVIRONMENT_DEVELOPMENT),
+            timezone=settings.get("app.timezone", "Asia/Shanghai"),
         ),
         feishu=FeishuConfig(
             app_id=settings.get("feishu.app_id"),

@@ -1,5 +1,6 @@
 [app]
 env = "dev"
+timezone = "Asia/Shanghai"
 
 [feishu]
 app_id = ""

@@ -8,7 +8,7 @@ from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
 # 统一约束工具大类名称，避免上下游各写一套字符串。
-ToolCategoryName = Literal["history_tools", "memory_tools", "web_search_tools"]
+ToolCategoryName = Literal["history_tools", "web_search_tools", "write_tools"]
 ToolCategorySelection = tuple[ToolCategoryName, ...]
 
 

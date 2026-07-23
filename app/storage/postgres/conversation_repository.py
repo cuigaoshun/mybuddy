@@ -343,12 +343,14 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
         self,
         user_id: str,
         message_ids: Collection[str],
+        window_radius: int = 1,
         exclude_message_ids: Collection[str] | None = None,
     ) -> list[MemoryRecord]:
         """根据命中 message_id 展开每条消息前后各一条时间线消息。"""
         normalized_message_ids = list(dict.fromkeys(message_ids))
         if not normalized_message_ids:
             return []
+        normalized_window_radius = max(0, window_radius)
 
         timeline = (
             select(
@@ -393,8 +395,8 @@ class PostgresConversationMemoryRepository(ConversationMemoryRepository):
             .join(
                 matched_rows,
                 timeline.c.timeline_row_number.between(
-                    matched_rows.c.timeline_row_number - 1,
-                    matched_rows.c.timeline_row_number + 1,
+                    matched_rows.c.timeline_row_number - normalized_window_radius,
+                    matched_rows.c.timeline_row_number + normalized_window_radius,
                 ),
             )
             .distinct()

@@ -130,7 +130,7 @@ docker compose up
 
 ## 规划中的方向
 
-仓库里的 `docs/trigger/README.md` 说明了 trigger 和 reminder 的设计方向，例如“6 点提醒我点外卖”这类定时提醒能力。
+定时提醒能力仍处于规划阶段，详细方案见 `docs/trigger/README.md`。
 
 这部分目前应视为规划或后续方向，不应当理解为已经完成并默认可用的正式特性。
 

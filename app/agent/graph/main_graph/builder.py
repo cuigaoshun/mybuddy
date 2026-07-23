@@ -8,6 +8,7 @@ from app.agent.context.main_graph.formatter import ConversationContextFormatter
 from app.agent.context.tool import ContextTool
 from app.agent.context.tools.history_tools.search_history import HistoryToolDefinition
 from app.agent.context.tools.models import RegisteredTool
+from app.agent.context.tools.reminder_tools import ReminderToolDefinition
 from app.agent.context.tools.registry import ToolRegistry
 from app.agent.context.tools.web_search_tools.search_web import WebSearchToolDefinition
 from app.agent.graph.main_graph.runtime import GraphRuntimeContext, GraphServices, LLMProvider
@@ -81,5 +82,6 @@ def build_graph(llm_provider: LLMProvider, service: GraphServices):
 def _build_tools(service: GraphServices) -> tuple[RegisteredTool, ...]:
     return (
         HistoryToolDefinition.build(service.conversation_memory_service),
+        ReminderToolDefinition.build(service.reminder_service),
         WebSearchToolDefinition.build(service.web_search_service),
     )

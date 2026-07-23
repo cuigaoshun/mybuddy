@@ -5,6 +5,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.agent.graph.main_graph import GraphChatAgent, build_graph
 from app.agent.graph.main_graph.runtime import GraphServices, LLMProvider
+from app.agent.graph.reminder_graph import ReminderGraphServices, build_reminder_graph
 from app.agent.graph.memory_graph import MemoryGraphServices, build_memory_graph
 from app.bootstrap.feishu import create_feishu_client
 from app.bootstrap.listener import Listener
@@ -13,7 +14,9 @@ from app.bootstrap.wechat import create_wechat_poller_runner
 from app.core.config import AppRuntimeConfig, LlmConfig, WebSearchConfig
 from app.event.bus import EventBus
 from app.gateway.dispatch import FeishuDispatcher, WeChatDispatcher
+from app.services.reminder_execution import ReminderExecutionService
 from app.storage.embeddings import SentenceTransformerEmbeddingProvider
+from app.storage.postgres import PostgresReminderRepository
 from app.storage.postgres import (
     PostgresChatSessionInfoRepository,
     PostgresConversationMemoryRepository,
@@ -21,6 +24,8 @@ from app.storage.postgres import (
     PostgresWeChatAccountRepository,
     PostgresUserMemoryRepository,
 )
+from app.storage.reminder_repository import ReminderRepository
+from app.storage.reminder_service import ReminderService
 from app.storage.service import ConversationMemoryService
 from app.storage.session_info_service import ChatSessionInfoService
 from app.storage.user_identity_service import UserIdentityService
@@ -31,6 +36,7 @@ from app.services.llm import create_chat_model
 from app.services.im_sender import CompositeMessageSender, FeishuMessageSender, WeChatMessageSender
 from app.services.web_search import WebSearchService
 from app.workers.memory_scheduler import MemorySchedulerRunner
+from app.workers.reminder_scheduler import ReminderSchedulerRunner
 from app.pkg.weixin import WeixinApiClient
 
 
@@ -75,6 +81,8 @@ class AppContainer(containers.DeclarativeContainer):
     # 用户身份映射 PostgreSQL 仓储。
     user_identity_repository = providers.Singleton(PostgresUserIdentityRepository, engine=engine)
 
+    reminder_repository: providers.Provider[ReminderRepository] = providers.Singleton(PostgresReminderRepository, engine=engine)
+
     # 微信账号运行态 PostgreSQL 仓储。
     wechat_account_repository = providers.Singleton(PostgresWeChatAccountRepository, engine=engine)
 
@@ -110,6 +118,12 @@ class AppContainer(containers.DeclarativeContainer):
         user_identity_service=user_identity_service,
     )
 
+    reminder_service = providers.Singleton(
+        ReminderService,
+        repository=reminder_repository,
+        runtime_config=app_runtime_config,
+    )
+
     # 聊天模型客户端，应用生命周期内复用。
     chat_model = providers.Singleton(create_chat_model, config=llm_config, runtime_config=app_runtime_config)
 
@@ -125,6 +139,7 @@ class AppContainer(containers.DeclarativeContainer):
         conversation_memory_service=conversation_memory_service,
         user_memory_service=user_memory_service,
         web_search_service=web_search_service,
+        reminder_service=reminder_service,
     )
 
     memory_graph_services = providers.Singleton(
@@ -133,6 +148,8 @@ class AppContainer(containers.DeclarativeContainer):
         chat_session_info_service=chat_session_info_service,
         user_memory_service=user_memory_service,
     )
+
+    reminder_graph_services = providers.Singleton(ReminderGraphServices, llm_provider=llm_provider)
 
     # 编译后的 LangGraph，应用生命周期内复用。
     agent_graph = providers.Singleton(
@@ -145,6 +162,11 @@ class AppContainer(containers.DeclarativeContainer):
         build_memory_graph,
         llm_provider=llm_provider,
         services=memory_graph_services,
+    )
+
+    reminder_graph = providers.Singleton(
+        build_reminder_graph,
+        services=reminder_graph_services,
     )
 
     # 聊天 Agent，负责把消息送进图并拿回最终回复。
@@ -172,6 +194,16 @@ class AppContainer(containers.DeclarativeContainer):
         CompositeMessageSender,
         feishu_sender=feishu_message_sender,
         wechat_sender=wechat_message_sender,
+    )
+
+    reminder_execution_service = providers.Singleton(
+        ReminderExecutionService,
+        repository=reminder_repository,
+        reminder_service=reminder_service,
+        reminder_graph=reminder_graph,
+        message_sender=message_sender,
+        conversation_memory_service=conversation_memory_service,
+        wechat_account_service=wechat_account_service,
     )
 
     # 会话编排器，每次取用时创建一个新实例。
@@ -204,10 +236,18 @@ class AppContainer(containers.DeclarativeContainer):
     listener = providers.Singleton(Listener, container=__self__)
 
     memory_scheduler = providers.Singleton(AsyncIOScheduler)
+    reminder_scheduler = providers.Singleton(AsyncIOScheduler)
 
     memory_scheduler_runner = providers.Singleton(
         MemorySchedulerRunner,
         scheduler=memory_scheduler,
         chat_session_info_service=chat_session_info_service,
         memory_graph=memory_graph,
+    )
+
+    reminder_scheduler_runner = providers.Singleton(
+        ReminderSchedulerRunner,
+        scheduler=reminder_scheduler,
+        reminder_service=reminder_service,
+        reminder_execution_service=reminder_execution_service,
     )

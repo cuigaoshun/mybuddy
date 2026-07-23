@@ -206,3 +206,97 @@ ON public.wechat_account (qrcode_status);
 
 CREATE INDEX IF NOT EXISTS idx_wechat_account_updated_at
 ON public.wechat_account (updated_at);
+
+CREATE TABLE IF NOT EXISTS public.reminder_schedule (
+    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id uuid NOT NULL,
+    im_type text NOT NULL,
+    chat_id text NOT NULL,
+    third_party_user_id text NOT NULL,
+    chat_type text NOT NULL,
+    reminder_text text NOT NULL,
+    timezone text NOT NULL,
+    run_at timestamptz NULL,
+    cron_expr text NULL,
+    next_run_at timestamptz NULL,
+    status text NOT NULL,
+    source_message_id text NOT NULL,
+    source_message_time timestamptz NOT NULL,
+    source_text text NOT NULL,
+    last_triggered_at timestamptz NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT chk_reminder_schedule_run_at_xor_cron_expr
+        CHECK (
+            (run_at IS NOT NULL AND cron_expr IS NULL)
+            OR (run_at IS NULL AND cron_expr IS NOT NULL)
+        )
+);
+
+COMMENT ON TABLE public.reminder_schedule IS '提醒规则表，保存一次性或重复提醒的定义';
+COMMENT ON COLUMN public.reminder_schedule.id IS '主键，自增标识';
+COMMENT ON COLUMN public.reminder_schedule.user_id IS '系统统一用户标识';
+COMMENT ON COLUMN public.reminder_schedule.im_type IS 'IM 平台类型，例如 feishu 或 wechat';
+COMMENT ON COLUMN public.reminder_schedule.chat_id IS '提醒默认发送目标会话标识';
+COMMENT ON COLUMN public.reminder_schedule.third_party_user_id IS '提醒默认发送目标第三方用户标识';
+COMMENT ON COLUMN public.reminder_schedule.chat_type IS '会话类型，例如 p2p 或 group';
+COMMENT ON COLUMN public.reminder_schedule.reminder_text IS '提醒正文';
+COMMENT ON COLUMN public.reminder_schedule.timezone IS '提醒规则解释使用的时区';
+COMMENT ON COLUMN public.reminder_schedule.run_at IS '一次性提醒的触发时间';
+COMMENT ON COLUMN public.reminder_schedule.cron_expr IS '重复提醒的 cron 表达式';
+COMMENT ON COLUMN public.reminder_schedule.next_run_at IS '下一次待触发时间';
+COMMENT ON COLUMN public.reminder_schedule.status IS '提醒规则状态，例如 active、paused、cancelled';
+COMMENT ON COLUMN public.reminder_schedule.source_message_id IS '创建该提醒的来源消息 ID';
+COMMENT ON COLUMN public.reminder_schedule.source_message_time IS '创建该提醒的来源消息时间';
+COMMENT ON COLUMN public.reminder_schedule.source_text IS '创建该提醒的来源原始文本';
+COMMENT ON COLUMN public.reminder_schedule.last_triggered_at IS '最近一次被物化执行的时间';
+COMMENT ON COLUMN public.reminder_schedule.created_at IS '记录创建时间';
+COMMENT ON COLUMN public.reminder_schedule.updated_at IS '记录最近更新时间';
+
+CREATE INDEX IF NOT EXISTS idx_reminder_schedule_user_id
+ON public.reminder_schedule (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_reminder_schedule_next_run_at
+ON public.reminder_schedule (next_run_at);
+
+CREATE TABLE IF NOT EXISTS public.reminder_job (
+    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    schedule_id bigint NOT NULL,
+    scheduled_for timestamptz NOT NULL,
+    status text NOT NULL,
+    lease_owner text NULL,
+    lease_until timestamptz NULL,
+    attempt_count integer NOT NULL,
+    available_at timestamptz NOT NULL,
+    last_error text NULL,
+    dedupe_key text NOT NULL,
+    sent_message_id text NULL,
+    sent_at timestamptz NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+COMMENT ON TABLE public.reminder_job IS '提醒执行任务表，保存每一次待执行或已执行的提醒实例';
+COMMENT ON COLUMN public.reminder_job.id IS '主键，自增标识';
+COMMENT ON COLUMN public.reminder_job.schedule_id IS '所属 reminder_schedule 主键';
+COMMENT ON COLUMN public.reminder_job.scheduled_for IS '该次提醒原计划执行时间';
+COMMENT ON COLUMN public.reminder_job.status IS '任务状态，例如 pending、running、sent、failed';
+COMMENT ON COLUMN public.reminder_job.lease_owner IS '当前任务租约持有者';
+COMMENT ON COLUMN public.reminder_job.lease_until IS '当前任务租约过期时间';
+COMMENT ON COLUMN public.reminder_job.attempt_count IS '当前任务已尝试执行次数';
+COMMENT ON COLUMN public.reminder_job.available_at IS '该任务下一次允许被扫描执行的时间';
+COMMENT ON COLUMN public.reminder_job.last_error IS '最近一次失败错误信息';
+COMMENT ON COLUMN public.reminder_job.dedupe_key IS '任务幂等键';
+COMMENT ON COLUMN public.reminder_job.sent_message_id IS '发送成功后的消息 ID';
+COMMENT ON COLUMN public.reminder_job.sent_at IS '发送成功时间';
+COMMENT ON COLUMN public.reminder_job.created_at IS '记录创建时间';
+COMMENT ON COLUMN public.reminder_job.updated_at IS '记录最近更新时间';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uidx_reminder_job_dedupe_key
+ON public.reminder_job (dedupe_key);
+
+CREATE INDEX IF NOT EXISTS idx_reminder_job_due_status
+ON public.reminder_job (status, available_at);
+
+CREATE INDEX IF NOT EXISTS idx_reminder_job_schedule_id
+ON public.reminder_job (schedule_id);
